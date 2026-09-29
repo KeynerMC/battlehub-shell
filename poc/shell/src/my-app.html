@@ -1,0 +1,13 @@
+<header class="shell-header">BattleHub · Shell (PoC ADR-003)</header>
+<main class="shell-main">
+  <div class="controls">
+    <button data-testid="start-match" click.trigger="startMatch()" disabled.bind="inMatch">Simular MatchStarted</button>
+    <button data-testid="pause-btn" click.trigger="host.pause()" disabled.bind="!inMatch">pause()</button>
+    <button data-testid="resume-btn" click.trigger="host.resume()" disabled.bind="!inMatch">start() otra vez</button>
+    <button data-testid="exit-btn" click.trigger="host.exit()" disabled.bind="!inMatch">dispose() y volver al lobby</button>
+    <span>Shell status: <strong data-testid="host-status">${host.status || 'idle'}</strong></span>
+  </div>
+  <game-host if.bind="inMatch" component.ref="host" context.bind="context" on-exit.bind="onExit"></game-host>
+  <p else data-testid="lobby">Lobby: esperando partida.</p>
+</main>
+<footer class="shell-footer">Footer del Shell · Aurelia ${aureliaVersion}</footer>

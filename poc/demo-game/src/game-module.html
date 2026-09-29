@@ -1,0 +1,7 @@
+<section class="demo-game">
+  <h3>Demo Game (microfrontend remoto)</h3>
+  <p>Partida: <strong>${context.matchId}</strong> · Jugador: <strong>${context.currentUser.displayName}</strong></p>
+  <p>Estado: <strong data-testid="game-state">${state}</strong></p>
+  <p>Clicks: <strong data-testid="clicks">${clicks}</strong></p>
+  <button data-testid="click-btn" click.trigger="clicks = clicks + 1" disabled.bind="state !== 'running'">¡Click!</button>
+</section>
