@@ -141,7 +141,14 @@ oficial. No cambia el estado de los demás participantes ni inicia una partida m
 /.github/workflows  → pipeline de CI de la aplicación principal
 ```
 
-## Convenciones
+## Pruebas de navegador
+
+Las pruebas del Shell principal están en `e2e/`, separadas de `poc/e2e/`.
+Consulta [las instrucciones E2E](e2e/README.md) para ejecutar el recorrido de sesión,
+perfil, catálogo, sala, demo y salida, y la recuperación ante un remote inaccesible.
+Requieren Chromium de Playwright. Todavía no están conectadas al CI.
+
+## Convenciones del repositorio
 
 - Commits en formato semántico (`feat:`, `fix:`, `docs:`, `test:`, `chore:`, `ci:`...).
 - `main` protegida: todo cambio entra por Pull Request con CI en verde y al menos 1 aprobación.
