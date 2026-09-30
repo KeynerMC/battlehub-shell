@@ -23,6 +23,7 @@ body {
 
 .shell-nav {
   display: flex;
+  flex-wrap: wrap;
   gap: 0.75rem;
 }
 
@@ -90,4 +91,17 @@ body {
 .home-status li {
   margin-bottom: 0.75rem;
   line-height: 1.5;
+}
+
+.catalog-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
+  gap: 1rem;
+}
+
+.catalog-card {
+  padding: 1.5rem;
+  border: 1px solid #d4dce8;
+  border-radius: 0.6rem;
+  background: white;
 }

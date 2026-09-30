@@ -86,7 +86,20 @@ y pulsa **Cerrar sesión de prueba**. Navegar fuera del juego ejecuta la limpiez
 Esta restricción de interfaz no sustituye la autorización de las APIs. La integración real
 con Auth0 requerirá otro adaptador y completar el flujo de redirección y tokens.
 
-### Scripts
+### Perfil y catálogo de prueba
+
+El menú **Mi perfil** muestra el nombre de la sesión y su identificador de prueba.
+**Juegos** muestra un catálogo simulado con Demo, Typing, Trivia y Memory. Solo el demo
+tiene acceso a la pantalla de juego; los demás indican integración pendiente. El servidor
+del demo debe estar encendido para cargarlo. Ambas páginas requieren sesión simulada.
+
+`src/profile/profile-service.ts` define las operaciones internas y `mock-profile-service.ts`
+las implementa en memoria, usando el usuario actual. Los modelos de `profile-models.ts`
+no son DTOs oficiales del Equipo 1. No se consulta su API ni se verifican permisos reales.
+Las páginas manejan carga, error y catálogo vacío. Más adelante se registrará un adaptador
+HTTP para traducir el contrato acordado del servicio externo a estos modelos internos.
+
+### Comandos disponibles
 
 | Comando | Qué hace |
 |---|---|

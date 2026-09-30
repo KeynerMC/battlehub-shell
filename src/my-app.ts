@@ -5,6 +5,8 @@ import './my-app.css';
 
 @route({
   routes: [
+    { path: 'profile', component: import('./pages/profile/profile-page'), title: 'Mi perfil | BattleHub' },
+    { path: 'catalog', component: import('./pages/catalog/catalog-page'), title: 'Catálogo | BattleHub' },
     {
       path: 'login',
       component: import('./pages/login/login-page'),

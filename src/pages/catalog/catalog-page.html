@@ -1,0 +1,18 @@
+<section>
+  <h1>Catálogo de juegos</h1>
+  <p>Catálogo simulado: no representa permisos reales. Por ahora solo está integrada la demostración.</p>
+  <p if.bind="busy" role="status">Cargando juegos…</p>
+  <div if.bind="error" role="alert">
+    <p>${error}</p>
+    <button click.trigger="loading()" disabled.bind="busy">Reintentar</button>
+  </div>
+  <p if.bind="!busy && !error && games.length === 0">No tienes juegos disponibles.</p>
+  <div class="catalog-grid">
+    <article class="catalog-card" repeat.for="game of games">
+      <h2>${game.name}</h2>
+      <p>${game.description}</p>
+      <a if.bind="game.gameType === playableGameType" class="home-action" href="/play">Probar demo</a>
+      <p else>Integración pendiente</p>
+    </article>
+  </div>
+</section>
