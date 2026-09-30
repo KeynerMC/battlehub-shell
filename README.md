@@ -99,7 +99,19 @@ no son DTOs oficiales del Equipo 1. No se consulta su API ni se verifican permis
 Las páginas manejan carga, error y catálogo vacío. Más adelante se registrará un adaptador
 HTTP para traducir el contrato acordado del servicio externo a estos modelos internos.
 
-### Comandos disponibles
+### Salas simuladas
+
+Entra con un nombre y abre **Salas**. Puedes entrar a la sala de ejemplo (con un participante
+ficticio), salir, crear una sala demo y volver a salir. Solo puedes pertenecer a una sala a la vez.
+Una sala creada se elimina cuando queda vacía. La navegación conserva las salas en la misma sesión;
+recargar o cambiar de sesión reinicia los datos. No hay sincronización entre pestañas o usuarios.
+
+`src/matchmaking/matchmaking-service.ts` define operaciones y modelos internos de la demo.
+`mock-matchmaking-service.ts` mantiene los datos en memoria. Las reglas de capacidad y pertenencia
+son de esta simulación, no contratos nuevos para el Equipo 2. Aún no hay SignalR, inicio de partida
+desde la sala ni llamadas a la API de Matchmaking. El acceso directo al demo sigue en **Probar juego**.
+
+### Scripts disponibles
 
 | Comando | Qué hace |
 |---|---|
