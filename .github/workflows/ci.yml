@@ -12,6 +12,7 @@ jobs:
   build-and-test:
     name: build-and-test
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -21,6 +22,10 @@ jobs:
         with:
           node-version-file: .nvmrc
           cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            poc/demo-game/package-lock.json
+            e2e/package-lock.json
 
       - name: Install
         run: npm ci
@@ -33,3 +38,28 @@ jobs:
 
       - name: Unit tests
         run: npx jest --ci
+
+      - name: Install demo dependencies
+        run: npm ci
+        working-directory: poc/demo-game
+
+      - name: Install E2E dependencies
+        run: npm ci
+        working-directory: e2e
+
+      - name: Install Chromium and system dependencies
+        run: npx playwright install --with-deps chromium
+        working-directory: e2e
+
+      - name: Browser integration tests
+        run: npm test
+        working-directory: e2e
+
+      - name: Upload E2E failure evidence
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-failure-evidence
+          path: e2e/test-results/
+          if-no-files-found: ignore
+          retention-days: 7

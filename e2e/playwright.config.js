@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 export default defineConfig({
   testDir: './tests',
   fullyParallel: false,
+  forbidOnly: !!process.env.CI,
   workers: 1,
   timeout: 60_000,
   expect: { timeout: 15_000 },

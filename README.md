@@ -146,7 +146,10 @@ oficial. No cambia el estado de los demás participantes ni inicia una partida m
 Las pruebas del Shell principal están en `e2e/`, separadas de `poc/e2e/`.
 Consulta [las instrucciones E2E](e2e/README.md) para ejecutar el recorrido de sesión,
 perfil, catálogo, sala, demo y salida, y la recuperación ante un remote inaccesible.
-Requieren Chromium de Playwright. Todavía no están conectadas al CI.
+Requieren Chromium de Playwright. El job `build-and-test` también las ejecuta en cada
+Pull Request hacia `main` y en los pushes a `main`, después de lint, build y pruebas unitarias.
+Instala las dependencias del demo y Chromium automáticamente. Si un E2E falla, el job falla
+y conserva las evidencias disponibles durante 7 días como `e2e-failure-evidence` en GitHub Actions.
 
 ## Convenciones del repositorio
 
