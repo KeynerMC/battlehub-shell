@@ -1,0 +1,14 @@
+<section class="home-intro">
+  <h1>Sesión de prueba</h1>
+  <p>Este acceso es simulado. No crea una cuenta, no usa contraseñas y no está conectado a Auth0. La sesión se pierde al recargar la página.</p>
+  <form if.bind="!auth.user" submit.trigger="signIn()">
+    <label for="display-name">Nombre para el demo</label>
+    <input id="display-name" name="displayName" value.bind="displayName" required maxlength="50" autocomplete="nickname" disabled.bind="busy">
+    <button type="submit" disabled.bind="busy">${busy ? 'Entrando…' : 'Entrar en modo prueba'}</button>
+  </form>
+  <div else>
+    <p>Sesión activa: <strong>${auth.user.displayName}</strong></p>
+    <button type="button" click.trigger="signOut()">Cerrar sesión de prueba</button>
+  </div>
+  <p if.bind="error" role="alert">${error}</p>
+</section>

@@ -3,7 +3,9 @@
   <nav class="shell-nav" aria-label="Navegación principal">
     <a href="home">Inicio</a>
     <a href="play">Probar juego</a>
+    <a href="login">Sesión de prueba</a>
   </nav>
+  <span if.bind="auth.user">${auth.user.displayName} · Sesión simulada</span>
 </header>
 <main class="shell-content">
   <au-viewport></au-viewport>

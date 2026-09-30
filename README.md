@@ -42,6 +42,7 @@ npm.cmd start
 ```
 
 El remote escucha en el puerto 4001. En el Shell (puerto 4000), abre **Probar juego**
+y entra primero con un nombre en **Sesión de prueba**. Después abre **Probar juego**
 y pulsa **Cargar demo**. El usuario y la partida son simulados; el componente se descarga
 realmente del otro servidor. Comprueba el contador, pausa, reanudación y regreso al lobby.
 No arranques `poc/shell` simultáneamente: usa el mismo puerto 4000.
@@ -72,6 +73,20 @@ lleva a `play`, la pantalla de prueba del remote. Las páginas Welcome/About se 
 El encabezado y pie pertenecen al Shell y se mantienen al cambiar de página.
 
 ## Comandos
+
+### Sesión simulada
+
+`src/auth/auth-service.ts` define el servicio interno del Shell. El arranque registra una única
+instancia de `MockAuthService` para las páginas y el encabezado. No se generan tokens ni se
+consulta Profile; el identificador `demo-user` es solo de prueba. El nombre se valida y se entrega
+al juego en `currentUser`. La sesión vive en memoria y se pierde al recargar.
+
+La ruta `play` redirige a `login` si no hay sesión. Para cerrar sesión, abre **Sesión de prueba**
+y pulsa **Cerrar sesión de prueba**. Navegar fuera del juego ejecuta la limpieza de su host.
+Esta restricción de interfaz no sustituye la autorización de las APIs. La integración real
+con Auth0 requerirá otro adaptador y completar el flujo de redirección y tokens.
+
+### Scripts
 
 | Comando | Qué hace |
 |---|---|
