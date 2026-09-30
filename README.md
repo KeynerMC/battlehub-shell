@@ -108,8 +108,16 @@ recargar o cambiar de sesión reinicia los datos. No hay sincronización entre p
 
 `src/matchmaking/matchmaking-service.ts` define operaciones y modelos internos de la demo.
 `mock-matchmaking-service.ts` mantiene los datos en memoria. Las reglas de capacidad y pertenencia
-son de esta simulación, no contratos nuevos para el Equipo 2. Aún no hay SignalR, inicio de partida
-desde la sala ni llamadas a la API de Matchmaking. El acceso directo al demo sigue en **Probar juego**.
+son de esta simulación, no contratos nuevos para el Equipo 2. Aún no hay SignalR ni llamadas
+a la API de Matchmaking. El acceso directo al demo sigue en **Probar juego**.
+
+En tu sala, **Iniciar demo de la sala** abre `room-play/:roomId` y carga el remote automáticamente.
+El identificador de la sala se entrega como `matchId`, junto al usuario de la sesión. Se valida
+la pertenencia antes de abrir y antes de cargar el juego. **Volver al lobby** libera el juego
+y regresa a Salas conservando tu participación; **Salir de la sala** sí te retira de ella.
+El remote debe estar encendido en el puerto 4001. Si falla, puedes reintentar o volver a las salas.
+`prepareGame` es una operación interna del mock, no un contrato HTTP ni un evento MatchStarted
+oficial. No cambia el estado de los demás participantes ni inicia una partida multijugador real.
 
 ### Scripts disponibles
 

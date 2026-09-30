@@ -1,6 +1,6 @@
 <section>
   <h1>Salas de prueba</h1>
-  <p>Simulación local para el demo: las salas no se comparten con otros usuarios y se reinician al recargar o cambiar de sesión. El inicio de partida desde una sala está pendiente.</p>
+  <p>Simulación local para el demo: las salas no se comparten con otros usuarios y se reinician al recargar o cambiar de sesión. Puedes iniciar el demo de tu sala sin esperar otros participantes.</p>
   <form submit.trigger="create()">
     <label for="room-title">Nombre de la sala</label>
     <input id="room-title" value.bind="title" required maxlength="60" disabled.bind="busy || currentRoom">
@@ -18,6 +18,7 @@
       <ul><li repeat.for="player of room.participants">${player.displayName}</li></ul>
       <button if.bind="isMember(room)" click.trigger="leave()" disabled.bind="busy">Salir de la sala</button>
       <button else click.trigger="join(room.id)" disabled.bind="busy || currentRoom || room.participants.length >= room.maxPlayers">Entrar a la sala</button>
+      <a if.bind="isMember(room) && !busy" class="home-action" href="/room-play/${room.id}">Iniciar demo de la sala</a>
     </article>
   </div>
 </section>

@@ -1,6 +1,8 @@
 <import from="../../games/game-host"></import>
 <section>
   <h1>Prueba de integración de juegos</h1>
+  <p if.bind="roomId">Sala de origen: ${roomId}. Al salir regresarás a las salas conservando tu participación.</p>
+  <p if.bind="error" role="alert">${error}</p>
   <p>Usuario y partida simulados. Esta pantalla todavía no está conectada a Auth0 ni Matchmaking.</p>
   <p if.bind="!inMatch" data-testid="lobby">Lobby de prueba: listo para cargar el demo.</p>
   <div>

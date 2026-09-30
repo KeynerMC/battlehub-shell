@@ -1,6 +1,7 @@
 import { resolve } from 'aurelia';
 import { IAuthService, type SessionUser } from '../auth/auth-service';
 import type { LobbyRoom, MatchmakingService } from './matchmaking-service';
+import type { GameContext } from '../games/game-contracts';
 
 export class MockMatchmakingService implements MatchmakingService {
   private readonly auth = resolve(IAuthService);
@@ -54,5 +55,15 @@ export class MockMatchmakingService implements MatchmakingService {
     const user = this.user();
     for (const room of this.rooms) room.participants = room.participants.filter(player => player.id !== user.id);
     this.rooms = this.rooms.filter(room => room.participants.length > 0);
+  }
+
+  // Preparación local: no representa un evento MatchStarted del servicio real.
+  public async prepareGame(roomId: string): Promise<GameContext> {
+    const user = this.user();
+    const room = this.rooms.find(item => item.id === roomId);
+    if (!room || !room.participants.some(player => player.id === user.id)) {
+      throw new Error('Debes pertenecer a la sala para iniciar su demo.');
+    }
+    return { matchId: room.id, gameType: room.gameType, currentUser: { ...user } };
   }
 }
