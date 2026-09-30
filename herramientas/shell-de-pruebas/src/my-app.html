@@ -1,0 +1,46 @@
+<header class="shell-header">
+  <strong>BattleHub · Shell de pruebas</strong>
+  <span>Para probar los juegos de los Equipos 4, 5 y 6 · ADR-003</span>
+</header>
+
+<div class="shell-body">
+  <aside class="panel">
+    <h3>1. Juego a cargar</h3>
+    <label>Juego
+      <select value.bind="gameType" change.trigger="gameTypeChanged()" disabled.bind="inMatch" data-testid="game-select">
+        <option repeat.for="g of games" model.bind="g.type">${g.label}</option>
+      </select>
+    </label>
+    <label>URL del remoteEntry.js
+      <input value.bind="url" disabled.bind="inMatch" data-testid="url-input">
+    </label>
+
+    <h3>2. Contexto de la partida</h3>
+    <label>matchId <input value.bind="matchId" disabled.bind="inMatch"></label>
+    <label>Nombre del jugador <input value.bind="displayName" disabled.bind="inMatch"></label>
+
+    <h3>3. Probar el contrato</h3>
+    <div class="buttons">
+      <button data-testid="start-match" click.trigger="startMatch()" disabled.bind="inMatch">Cargar juego</button>
+      <button data-testid="pause-btn" click.trigger="host.pause()" disabled.bind="!inMatch || host.status !== 'running'">pause()</button>
+      <button data-testid="resume-btn" click.trigger="host.resume()" disabled.bind="!inMatch || host.status !== 'paused'">start()</button>
+      <button data-testid="exit-btn" click.trigger="host.exit()" disabled.bind="!inMatch">dispose()</button>
+    </div>
+    <p>Estado: <strong data-testid="host-status">${inMatch ? host.status : 'lobby'}</strong></p>
+
+    <h3>Registro <button class="link" click.trigger="clearLog()">limpiar</button></h3>
+    <ol class="log" data-testid="log">
+      <li repeat.for="l of logs" class="log-${l.level}"><span>${l.time}</span> ${l.message}</li>
+    </ol>
+  </aside>
+
+  <main class="shell-main">
+    <game-host if.bind="inMatch" component.ref="host" context.bind="context" on-exit.bind="onExit" on-log.bind="onLog"></game-host>
+    <div else class="lobby" data-testid="lobby">
+      <p>Lobby: elegí un juego y presioná <strong>Cargar juego</strong>.</p>
+      <p>Su juego tiene que estar corriendo con <code>npm start</code> en su puerto.</p>
+    </div>
+  </main>
+</div>
+
+<footer class="shell-footer">Footer del Shell · Aurelia ${aureliaVersion}</footer>
