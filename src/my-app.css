@@ -1,18 +1,93 @@
-nav {
-  background: #eee;
+body {
+  margin: 0;
+  color: #17243b;
+  background: #f5f7fb;
+  font-family: system-ui, sans-serif;
+}
+
+.shell-header {
   display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 2rem;
+  color: white;
+  background: #17243b;
 }
 
-a {
-  padding: 10px;
+.shell-brand {
+  font-size: 1.4rem;
+  font-weight: 700;
+}
+
+.shell-nav {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.shell-nav a {
+  padding: 0.6rem 0.8rem;
+  border-radius: 0.4rem;
+  color: white;
   text-decoration: none;
-  color: black;
 }
 
-a:hover {
-  background-color: darkgray;
+.shell-nav a:hover,
+.shell-nav a.active {
+  background: #344763;
 }
 
-.active {
-  background-color: lightgray;
+.shell-content {
+  max-width: 1440px;
+  min-height: 700px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+.shell-footer {
+  padding: 1.5rem 2rem;
+  border-top: 1px solid #d4dce8;
+  color: #46566e;
+}
+
+.home-intro {
+  max-width: 48rem;
+  margin-bottom: 2rem;
+}
+
+.home-intro h1 {
+  font-size: clamp(2rem, 4vw, 3rem);
+}
+
+.home-intro p {
+  line-height: 1.7;
+}
+
+.home-action {
+  display: inline-block;
+  padding: 0.85rem 1.2rem;
+  border-radius: 0.4rem;
+  color: white;
+  background: #234e98;
+  text-decoration: none;
+}
+
+.shell-nav a:focus-visible,
+.home-action:focus-visible {
+  outline: 3px solid #eeab31;
+  outline-offset: 3px;
+}
+
+.home-status {
+  max-width: 48rem;
+  padding: 1.5rem;
+  border: 1px solid #d4dce8;
+  border-radius: 0.6rem;
+  background: white;
+}
+
+.home-status li {
+  margin-bottom: 0.75rem;
+  line-height: 1.5;
 }

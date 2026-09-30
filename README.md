@@ -65,7 +65,13 @@ npm.cmd run build -- --env target=local
 El contexto y ciclo de vida están en `src/games/game-contracts.ts`. Las páginas no deben
 descargar scripts directamente: la pantalla de prueba utiliza `GameHost`.
 
-## Scripts
+## Navegación
+
+La ruta inicial y `home` muestran la bienvenida de BattleHub. El enlace «Probar juego»
+lleva a `play`, la pantalla de prueba del remote. Las páginas Welcome/About se retiraron.
+El encabezado y pie pertenecen al Shell y se mantienen al cambiar de página.
+
+## Comandos
 
 | Comando | Qué hace |
 |---|---|

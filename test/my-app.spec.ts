@@ -10,6 +10,6 @@ describe('my-app', () => {
     ).started;
 
     const links = getAllBy('nav a').map(a => a.textContent?.trim());
-    expect(links).toEqual(['Welcome', 'About', 'Probar juego']);
+    expect(links).toEqual(['Inicio', 'Probar juego']);
   });
 });

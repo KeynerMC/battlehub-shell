@@ -1,16 +1,12 @@
 import { route } from '@aurelia/router';
+import './my-app.css';
 
 @route({
   routes: [
     {
-      path: ['', 'welcome'],
-      component: import('./welcome-page'),
-      title: 'Welcome',
-    },
-    {
-      path: 'about',
-      component: import('./about-page'),
-      title: 'About',
+      path: ['', 'home'],
+      component: import('./pages/home/home-page'),
+      title: 'Inicio | BattleHub',
     },
     {
       path: 'play',
