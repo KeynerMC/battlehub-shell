@@ -4,6 +4,9 @@ const HtmlWebpackPlugin = require('html-webpack-plugin');
 const {BundleAnalyzerPlugin} = require('webpack-bundle-analyzer');
 const Dotenv = require('dotenv-webpack');
 const TerserPlugin = require('terser-webpack-plugin');
+const { ModuleFederationPlugin } = require('webpack').container;
+const CopyPlugin = require('copy-webpack-plugin');
+const sharedDeps = require('./tooling/mf-shared');
 
 
 const cssLoader = {
@@ -47,16 +50,14 @@ module.exports = function(env, { analyze }) {
       clean: true,
       path: path.resolve(__dirname, 'dist'),
       filename: production ? '[name].[contenthash].bundle.js' : '[name].bundle.js',
+      publicPath: 'auto',
+      uniqueName: 'battlehubShell',
     },
     resolve: {
       extensions: ['.ts', '.js'],
       modules: [path.resolve(__dirname, 'src'), 'node_modules'],
-      alias: production ? {
-        // add your production aliases here
-      } : {
-        ...getAureliaDevAliases()
-        // add your development aliases here
-      }
+      // Usar las mismas entradas de Aurelia que el remote, también en desarrollo.
+      alias: {}
     },
     devServer: {
       historyApiFallback: true,
@@ -77,6 +78,11 @@ module.exports = function(env, { analyze }) {
       ]
     },
     plugins: [
+      new ModuleFederationPlugin({ name: 'battlehubShell', shared: sharedDeps }),
+      new CopyPlugin({ patterns: [{
+        from: `config/remotes.${env.target || (production ? 'production' : 'local')}.json`,
+        to: 'remotes.config.json',
+      }] }),
       new HtmlWebpackPlugin({ template: 'index.html', favicon: 'favicon.ico' }),
       new Dotenv({
         path: `./.env${production ? '' :  '.' + (process.env.NODE_ENV || 'development')}`,

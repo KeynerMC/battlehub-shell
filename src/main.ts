@@ -1,11 +1,6 @@
-import Aurelia from 'aurelia';
-import { RouterConfiguration } from '@aurelia/router';
-import { MyApp } from './my-app';
-
-Aurelia
-  .register(RouterConfiguration)
-  // To use HTML5 pushState routes, replace previous line with the following
-  // customized router config.
-  // .register(RouterConfiguration.customize({ useUrlFragmentHash: false }))
-  .app(MyApp)
-  .start();
+// Resolver las dependencias compartidas antes de iniciar Aurelia.
+import('./bootstrap').catch(error => {
+  console.error('No se pudo iniciar BattleHub', error);
+  const host = document.querySelector('my-app');
+  if (host) host.textContent = 'No se pudo iniciar BattleHub. Recarga la página.';
+});

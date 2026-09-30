@@ -1,0 +1,13 @@
+<import from="../../games/game-host"></import>
+<section>
+  <h1>Prueba de integración de juegos</h1>
+  <p>Usuario y partida simulados. Esta pantalla todavía no está conectada a Auth0 ni Matchmaking.</p>
+  <p if.bind="!inMatch" data-testid="lobby">Lobby de prueba: listo para cargar el demo.</p>
+  <div>
+    <button data-testid="start-match" click.trigger="startMatch()" disabled.bind="inMatch">Cargar demo</button>
+    <button click.trigger="host.pause()" disabled.bind="host.status !== 'running'">Pausar</button>
+    <button click.trigger="host.resume()" disabled.bind="host.status !== 'paused'">Reanudar</button>
+    <button click.trigger="host.exit()" disabled.bind="!inMatch">Volver al lobby</button>
+  </div>
+  <game-host component.ref="host" context.bind="context" on-exit.bind="onExit"></game-host>
+</section>
