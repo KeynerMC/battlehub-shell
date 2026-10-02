@@ -1,0 +1,14 @@
+<section class="home-intro">
+  <h1>Mi perfil</h1>
+  <p>Datos simulados de la sesión actual. Todavía no se consulta el servicio de perfiles.</p>
+  <p if.bind="busy" role="status">Cargando perfil…</p>
+  <div if.bind="error" role="alert">
+    <p>${error}</p>
+    <button click.trigger="loading()" disabled.bind="busy">Reintentar</button>
+  </div>
+  <dl if.bind="profile">
+    <dt>Nombre</dt><dd>${profile.displayName}</dd>
+    <dt>Identificador de prueba</dt><dd>${profile.id}</dd>
+  </dl>
+  <a href="/catalog">Ver catálogo de juegos</a>
+</section>

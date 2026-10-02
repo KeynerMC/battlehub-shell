@@ -16,13 +16,8 @@ beforeAll(() => {
   });
 });
 
-afterEach(() => {
-  fixtures.forEach(async f => {
-    try {
-      await f.stop(true);
-    } catch {
-      // ignore
-    }
-  });
-  fixtures.length = 0;
+afterEach(async () => {
+  for (const fixture of fixtures.splice(0)) {
+    await fixture.stop(true);
+  }
 });
