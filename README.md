@@ -7,6 +7,10 @@ de Matchmaking. Los juegos se cargan mediante Module Federation. También incluy
 de demostración con datos en memoria y un juego de prueba.
 Contratos: [battlehub-contracts](https://github.com/javiercoulon-public/battlehub-contracts).
 
+La [guía de interfaz](docs/interfaz-shell.md) describe las pantallas, el alcance del rediseño
+y las pruebas visuales. Para los equipos de juegos, consultar la
+[plantilla de integración con el Shell](docs/plantilla-integracion-juegos.md).
+
 ## Activar Auth0 y Profile Service
 
 Consulta [la guía de integración](docs/auth0-profile-integration.md) para configurar el tenant,
