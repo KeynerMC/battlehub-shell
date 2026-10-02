@@ -1,0 +1,13 @@
+<div class="game-area">
+  <div if.bind="status === 'loading'" data-testid="loading">Cargando juego... (intento ${attempt})</div>
+
+  <div if.bind="status === 'error'" class="game-error" data-testid="game-error">
+    <h3>No se pudo cargar el juego</h3>
+    <p>Código: <strong data-testid="error-code">${error.code}</strong></p>
+    <p>${error.message}</p>
+    <button if.bind="error.retryable" data-testid="retry-btn" click.trigger="load()">Reintentar</button>
+    <button data-testid="lobby-btn" click.trigger="exit()">Volver al lobby</button>
+  </div>
+
+  <au-compose if.bind="component" component.bind="component"></au-compose>
+</div>
