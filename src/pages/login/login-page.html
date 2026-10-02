@@ -1,14 +1,16 @@
 <section class="home-intro">
-  <h1>Sesión de prueba</h1>
-  <p>Este acceso es simulado. No crea una cuenta, no usa contraseñas y no está conectado a Auth0. La sesión se pierde al recargar la página.</p>
-  <form if.bind="!auth.user" submit.trigger="signIn()">
+  <h1>${auth.mode === 'mock' ? 'Sesión de prueba' : 'Mi sesión'}</h1>
+  <p if.bind="auth.mode === 'mock'">Este acceso es simulado. No crea una cuenta, no usa contraseñas y no está conectado a Auth0. La sesión se pierde al recargar la página.</p>
+  <p else>Inicia sesión para consultar tu perfil y los juegos disponibles.</p>
+  <form if.bind="!auth.user && auth.mode === 'mock'" submit.trigger="signIn()">
     <label for="display-name">Nombre para el demo</label>
     <input id="display-name" name="displayName" value.bind="displayName" required maxlength="50" autocomplete="nickname" disabled.bind="busy">
     <button type="submit" disabled.bind="busy">${busy ? 'Entrando…' : 'Entrar en modo prueba'}</button>
   </form>
-  <div else>
+  <button if.bind="!auth.user && auth.mode === 'auth0'" click.trigger="signIn()" disabled.bind="busy">${busy ? 'Abriendo…' : 'Iniciar sesión'}</button>
+  <div if.bind="auth.user">
     <p>Sesión activa: <strong>${auth.user.displayName}</strong></p>
-    <button type="button" click.trigger="signOut()">Cerrar sesión de prueba</button>
+    <button type="button" click.trigger="signOut()" disabled.bind="busy">${auth.mode === 'mock' ? 'Cerrar sesión de prueba' : 'Cerrar sesión'}</button>
   </div>
   <p if.bind="error" role="alert">${error}</p>
 </section>

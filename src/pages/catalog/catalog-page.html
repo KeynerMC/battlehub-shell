@@ -1,6 +1,7 @@
 <section>
   <h1>Catálogo de juegos</h1>
-  <p>Catálogo simulado: no representa permisos reales. Por ahora solo está integrada la demostración.</p>
+  <p if.bind="auth.mode === 'mock'">Catálogo simulado: no representa permisos reales. Por ahora solo está integrada la demostración.</p>
+  <p else>Estos son tus juegos habilitados. La conexión con las partidas está pendiente.</p>
   <p if.bind="busy" role="status">Cargando juegos…</p>
   <div if.bind="error" role="alert">
     <p>${error}</p>
@@ -10,8 +11,8 @@
   <div class="catalog-grid">
     <article class="catalog-card" repeat.for="game of games">
       <h2>${game.name}</h2>
-      <p>${game.description}</p>
-      <a if.bind="game.gameType === playableGameType" class="home-action" href="/play">Probar demo</a>
+      <p if.bind="game.description">${game.description}</p>
+      <a if.bind="auth.mode === 'mock' && game.gameType === playableGameType" class="home-action" href="/play">Probar demo</a>
       <p else>Integración pendiente</p>
     </article>
   </div>

@@ -1,6 +1,7 @@
 import { route } from '@aurelia/router';
 import { resolve } from 'aurelia';
 import { IAuthService } from './auth/auth-service';
+import { IProfileService } from './profile/profile-service';
 import './my-app.css';
 
 @route({
@@ -12,7 +13,7 @@ import './my-app.css';
     {
       path: 'login',
       component: import('./pages/login/login-page'),
-      title: 'Sesión de prueba | BattleHub',
+      title: 'Sesión | BattleHub',
     },
     {
       path: ['', 'home'],
@@ -28,4 +29,14 @@ import './my-app.css';
 })
 export class MyApp {
   public readonly auth = resolve(IAuthService);
+  public readonly profiles = resolve(IProfileService);
+
+  public binding(): void {
+    if (this.auth.mode === 'auth0' && this.auth.user) void this.retryProfile();
+  }
+
+  public async retryProfile(): Promise<void> {
+    try { await this.profiles.sync(); }
+    catch { /* El servicio publica el error y permite reintentar sin perder el login. */ }
+  }
 }

@@ -4,13 +4,20 @@
     <a href="home">Inicio</a>
     <a href="profile">Mi perfil</a>
     <a href="catalog">Juegos</a>
-    <a href="lobby">Salas</a>
-    <a href="play">Probar juego</a>
-    <a href="login">Sesión de prueba</a>
+    <a if.bind="auth.mode === 'mock'" href="lobby">Salas</a>
+    <a if.bind="auth.mode === 'mock'" href="play">Probar juego</a>
+    <a href="login">${auth.mode === 'mock' ? 'Sesión de prueba' : 'Mi sesión'}</a>
   </nav>
-  <span if.bind="auth.user">${auth.user.displayName} · Sesión simulada</span>
+  <span if.bind="auth.user">${auth.user.displayName}${auth.mode === 'mock' ? ' · Sesión simulada' : ''}</span>
 </header>
 <main class="shell-content">
+  <p if.bind="auth.error" role="alert">${auth.error} <a href="/login">Iniciar sesión</a></p>
+  <p if.bind="auth.user && profiles.status === 'loading'" role="status">Sincronizando tu perfil…</p>
+  <div if.bind="auth.user && profiles.error" role="alert">
+    <p>Tu sesión está iniciada, pero falta completar el perfil. ${profiles.error}</p>
+    <button click.trigger="retryProfile()" disabled.bind="profiles.status === 'loading'">Reintentar sincronización</button>
+    <a href="/login">Revisar sesión</a>
+  </div>
   <au-viewport></au-viewport>
 </main>
 <footer class="shell-footer">BattleHub · Plataforma universitaria de minijuegos</footer>

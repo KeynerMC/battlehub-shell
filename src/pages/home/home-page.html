@@ -1,14 +1,16 @@
 <section class="home-intro" aria-labelledby="home-title">
   <h1 id="home-title">Bienvenido a BattleHub</h1>
   <p>Un lugar para encontrarte con otros jugadores y participar en minijuegos educativos.</p>
-  <p>Estamos construyendo la plataforma. Por ahora puedes probar un juego de demostración con un usuario y una partida simulados.</p>
-  <a class="home-action" href="/play">Probar juego demo</a>
+  <p if.bind="auth.mode === 'mock'">Estamos construyendo la plataforma. Por ahora puedes probar un juego de demostración con un usuario y una partida simulados.</p>
+  <p else>Inicia sesión y consulta tu perfil y los juegos habilitados para tu cuenta.</p>
+  <a if.bind="auth.mode === 'mock'" class="home-action" href="/play">Probar juego demo</a>
+  <a else class="home-action" href="/catalog">Ver mis juegos</a>
 </section>
-<section class="home-status" aria-labelledby="status-title">
+<section if.bind="auth.mode === 'mock'" class="home-status" aria-labelledby="status-title">
   <h2 id="status-title">¿Qué puedes hacer ahora?</h2>
   <ul>
     <li>Cargar el demo, sumar puntos, pausarlo y reanudarlo.</li>
     <li>Salir del demo y volver a su lobby de prueba.</li>
   </ul>
-  <p>Puedes entrar con un nombre mediante una sesión de prueba. Auth0, los perfiles reales y las salas multijugador estarán disponibles en próximas etapas.</p>
+  <p>En este modo puedes entrar con un nombre de prueba. Las salas multijugador reales siguen pendientes.</p>
 </section>

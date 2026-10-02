@@ -1,6 +1,6 @@
 <section class="home-intro">
   <h1>Mi perfil</h1>
-  <p>Datos simulados de la sesión actual. Todavía no se consulta el servicio de perfiles.</p>
+  <p if.bind="auth.mode === 'mock'">Datos simulados de la sesión actual. Todavía no se consulta el servicio de perfiles.</p>
   <p if.bind="busy" role="status">Cargando perfil…</p>
   <div if.bind="error" role="alert">
     <p>${error}</p>
@@ -8,7 +8,13 @@
   </div>
   <dl if.bind="profile">
     <dt>Nombre</dt><dd>${profile.displayName}</dd>
-    <dt>Identificador de prueba</dt><dd>${profile.id}</dd>
+    <dt>Identificador</dt><dd>${profile.id}</dd>
+    <dt if.bind="profile.email">Correo</dt><dd if.bind="profile.email">${profile.email}</dd>
   </dl>
+  <div if.bind="profile && auth.mode === 'auth0'">
+    <h2>Permisos</h2>
+    <p if.bind="permissions.length === 0">No tienes permisos asignados.</p>
+    <ul><li repeat.for="permission of permissions">${permission}</li></ul>
+  </div>
   <a href="/catalog">Ver catálogo de juegos</a>
 </section>

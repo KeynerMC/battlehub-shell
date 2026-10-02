@@ -4,7 +4,7 @@ import { IProfileService } from '../../profile/profile-service';
 import type { CatalogGame } from '../../profile/profile-models';
 
 export class CatalogPage {
-  private readonly auth = resolve(IAuthService);
+  public readonly auth = resolve(IAuthService);
   private readonly profiles = resolve(IProfileService);
   public games: CatalogGame[] = [];
   public busy = false;
@@ -19,7 +19,11 @@ export class CatalogPage {
     this.busy = true;
     this.error = '';
     this.games = [];
-    try { this.games = await this.profiles.getEnabledGames(); }
+    const user = this.auth.user;
+    try {
+      const games = await this.profiles.getEnabledGames();
+      if (this.auth.user === user) this.games = games;
+    }
     catch (error) { this.error = error instanceof Error ? error.message : 'No se pudo cargar el catálogo.'; }
     finally { this.busy = false; }
   }
