@@ -21,7 +21,7 @@ export default defineConfig({
       command: 'node node_modules/webpack-cli/bin/cli.js serve',
       cwd: fileURLToPath(new URL('../', import.meta.url)),
       url: 'http://localhost:4000',
-      env: { CI: '1' },
+      env: { CI: '1', BATTLEHUB_AUTH_MODE: 'mock' },
       reuseExistingServer: false,
       timeout: 120_000,
     },
