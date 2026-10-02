@@ -1,7 +1,7 @@
 <section>
   <h1>Catálogo de juegos</h1>
   <p if.bind="auth.mode === 'mock'">Catálogo simulado: no representa permisos reales. Por ahora solo está integrada la demostración.</p>
-  <p else>Estos son tus juegos habilitados. La conexión con las partidas está pendiente.</p>
+  <p else>Estos son tus juegos habilitados. Puedes crear o buscar partidas en <a href="/matches">Salas</a>.</p>
   <p if.bind="busy" role="status">Cargando juegos…</p>
   <div if.bind="error" role="alert">
     <p>${error}</p>

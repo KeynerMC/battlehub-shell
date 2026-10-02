@@ -6,6 +6,7 @@ import './my-app.css';
 
 @route({
   routes: [
+    { path: 'matches', component: import('./pages/matches/matches-page'), title: 'Salas | BattleHub' },
     { path: 'room-play/:roomId', component: import('./pages/play/play-page'), title: 'Partida de prueba | BattleHub' },
     { path: 'lobby', component: import('./pages/lobby/lobby-page'), title: 'Salas de prueba | BattleHub' },
     { path: 'profile', component: import('./pages/profile/profile-page'), title: 'Mi perfil | BattleHub' },

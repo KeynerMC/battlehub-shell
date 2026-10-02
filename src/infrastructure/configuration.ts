@@ -4,6 +4,7 @@ export interface ShellConfiguration {
   clientId?: string;
   audience?: string;
   profileServiceUrl?: string;
+  matchmakingServiceUrl?: string;
 }
 
 export function readConfiguration(values: Record<string, string | undefined>): ShellConfiguration {
@@ -27,7 +28,18 @@ export function readConfiguration(values: Record<string, string | undefined>): S
   if (!['http:', 'https:'].includes(api.protocol) || api.username || api.password || api.search || api.hash || api.pathname !== '/') {
     throw new Error('PROFILE_SERVICE_URL debe contener solo el origen del servicio, sin credenciales ni rutas.');
   }
-  return { mode, domain, clientId, audience, profileServiceUrl: api.origin };
+  let matchmakingServiceUrl: string | undefined;
+  if (values.MATCHMAKING_SERVICE_URL?.trim()) {
+    let url: URL;
+    try { url = new URL(values.MATCHMAKING_SERVICE_URL.trim()); }
+    catch { throw new Error('MATCHMAKING_SERVICE_URL debe ser un origen HTTP válido.'); }
+    if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password || url.search || url.hash || url.pathname !== '/') {
+      throw new Error('MATCHMAKING_SERVICE_URL debe contener solo el origen del servicio.');
+    }
+    matchmakingServiceUrl = url.origin;
+  }
+  return { mode, domain, clientId, audience, profileServiceUrl: api.origin,
+    ...(matchmakingServiceUrl ? { matchmakingServiceUrl } : {}) };
 }
 
 export function loadConfiguration(): ShellConfiguration {
@@ -38,5 +50,6 @@ export function loadConfiguration(): ShellConfiguration {
     AUTH0_CLIENT_ID: process.env.AUTH0_CLIENT_ID,
     AUTH0_AUDIENCE: process.env.AUTH0_AUDIENCE,
     PROFILE_SERVICE_URL: process.env.PROFILE_SERVICE_URL,
+    MATCHMAKING_SERVICE_URL: process.env.MATCHMAKING_SERVICE_URL,
   });
 }

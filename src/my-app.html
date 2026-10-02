@@ -5,6 +5,7 @@
     <a href="profile">Mi perfil</a>
     <a href="catalog">Juegos</a>
     <a if.bind="auth.mode === 'mock'" href="lobby">Salas</a>
+    <a if.bind="auth.mode === 'auth0'" href="matches">Salas</a>
     <a if.bind="auth.mode === 'mock'" href="play">Probar juego</a>
     <a href="login">${auth.mode === 'mock' ? 'Sesión de prueba' : 'Mi sesión'}</a>
   </nav>

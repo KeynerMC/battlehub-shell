@@ -10,6 +10,7 @@ import { MockMatchmakingService } from './matchmaking/mock-matchmaking-service';
 import { loadConfiguration } from './infrastructure/configuration';
 import { Auth0AuthService } from './auth/auth0-auth-service';
 import { HttpProfileService } from './profile/http-profile-service';
+import { IRemoteMatchmaking, RemoteMatchmakingService } from './matchmaking/remote-matchmaking-service';
 
 const config = loadConfiguration();
 const auth = config.mode === 'auth0' ? Auth0AuthService.create(config) : new MockAuthService();
@@ -18,6 +19,7 @@ await auth.initialize();
 await Aurelia.register(
   RouterConfiguration,
   Registration.instance(IAuthService, auth),
+  Registration.instance(IRemoteMatchmaking, new RemoteMatchmakingService(auth, config.matchmakingServiceUrl)),
   config.mode === 'auth0'
     ? Registration.instance(IProfileService, new HttpProfileService(auth, config.profileServiceUrl!))
     : Registration.singleton(IProfileService, MockProfileService),

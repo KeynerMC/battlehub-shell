@@ -2,18 +2,17 @@
 
 Shell Application de **BattleHub** — Equipo 3 (Grupo 1), curso de Paradigmas, UNA.
 
-El Shell es la aplicación contenedora de la plataforma. La aplicación principal incluye navegación
-y una pantalla de prueba que carga el juego demo con Module Federation. Incluye adaptadores
-para Auth0 y Profile Service, activables mediante configuración. Su validación contra el
-tenant y la API compartidos sigue pendiente; Matchmaking real y sesión única también.
+El Shell reúne el inicio de sesión con Auth0, el perfil del usuario, el catálogo y las salas
+de Matchmaking. Los juegos se cargan mediante Module Federation. También incluye un modo
+de demostración con datos en memoria y un juego de prueba.
 Contratos: [battlehub-contracts](https://github.com/javiercoulon-public/battlehub-contracts).
 
 ## Activar Auth0 y Profile Service
 
 Consulta [la guía de integración](docs/auth0-profile-integration.md) para configurar el tenant,
 Client ID, Audience, URL de la API y callbacks. Por defecto se usa `BATTLEHUB_AUTH_MODE=mock`.
-El modo `auth0` muestra login real, perfil, permisos y catálogo; las salas y el juego demo
-siguen disponibles en modo mock. Un fallo del servicio real no activa datos simulados.
+El modo `auth0` permite acceder al perfil, catálogo y salas reales en `/matches`.
+El modo `mock` conserva las salas de demostración y el juego demo.
 
 ## Versiones (ADR-003)
 
@@ -160,6 +159,9 @@ Instala las dependencias del demo y Chromium automáticamente. Si un E2E falla, 
 y conserva las evidencias disponibles durante 7 días como `e2e-failure-evidence` en GitHub Actions.
 
 ## Convenciones del repositorio
+
+La integración real con el Equipo 2 se documenta en [Salas y Matchmaking](docs/matchmaking-integration.md).
+La nueva ruta es `/matches`; requiere `MATCHMAKING_SERVICE_URL`, MongoDB y ambos servicios en ejecución.
 
 - Commits en formato semántico (`feat:`, `fix:`, `docs:`, `test:`, `chore:`, `ci:`...).
 - `main` protegida: todo cambio entra por Pull Request con CI en verde y al menos 1 aprobación.

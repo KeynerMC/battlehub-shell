@@ -1,0 +1,29 @@
+<import from="../../games/game-host"></import>
+<section>
+  <h1>Salas</h1>
+  <p>Partidas compartidas mediante Matchmaking. Puedes probar las salas aunque el juego todavía no esté disponible.</p>
+  <p role="status">${connectionStatus}</p>
+  <button click.trigger="connect()">Conectar</button>
+  <button click.trigger="refresh()" disabled.bind="busy">Actualizar salas</button>
+  <p if.bind="error" role="alert">${error}</p>
+  <form if.bind="canCreate" submit.trigger="create()">
+    <label>Título <input value.bind="title" maxlength="60" required></label>
+    <label>Juego <select value.bind="gameType"><option repeat.for="game of games" model.bind="game.gameType">${game.name}</option></select></label>
+    <label>Capacidad <input type="number" min="2" max="20" value.bind="maxPlayers" required></label>
+    <button type="submit" disabled.bind="busy || !gameType">Crear sala</button>
+  </form>
+  <p if.bind="!rooms.length">No hay salas activas.</p>
+  <article repeat.for="room of rooms">
+    <h2>${room.title}</h2>
+    <p>${room.gameType} · ${room.status} · ${room.currentPlayers}/${room.maxPlayers}</p>
+    <ul><li repeat.for="player of room.participants">${player.displayName}${player.userId === room.createdBy ? ' (anfitrión)' : ''}</li></ul>
+    <button if.bind="room.status === 'Waiting' && !isMember(room)" click.trigger="act(room, 'join')" disabled.bind="busy || room.currentPlayers >= room.maxPlayers">Unirme</button>
+    <button if.bind="room.status === 'Waiting' && isMember(room)" click.trigger="act(room, 'leave')" disabled.bind="busy">Salir</button>
+    <button if.bind="room.status === 'Waiting' && isOwner(room)" click.trigger="act(room, 'start')" disabled.bind="busy || room.currentPlayers < 2 || !isMember(room)">Iniciar partida</button>
+    <button if.bind="(room.status === 'Waiting' || room.status === 'Starting') && isOwner(room)" click.trigger="act(room, 'cancel')" disabled.bind="busy">Cancelar sala</button>
+    <button if.bind="room.status === 'Started' && isMember(room) && !context" click.trigger="openGame(room)">Abrir juego</button>
+  </article>
+  <p if.bind="gameMessage" role="status">${gameMessage}</p>
+  <button if.bind="context" click.trigger="host.exit()">Cerrar juego</button>
+  <game-host component.ref="host" context.bind="context" on-exit.bind="onGameExit"></game-host>
+</section>
