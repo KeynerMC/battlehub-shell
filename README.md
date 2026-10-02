@@ -3,9 +3,17 @@
 Shell Application de **BattleHub** — Equipo 3 (Grupo 1), curso de Paradigmas, UNA.
 
 El Shell es la aplicación contenedora de la plataforma. La aplicación principal incluye navegación
-y una pantalla de prueba que carga el juego demo con Module Federation. Auth0, Profile Service,
-Matchmaking y el control de sesión única siguen pendientes.
+y una pantalla de prueba que carga el juego demo con Module Federation. Incluye adaptadores
+para Auth0 y Profile Service, activables mediante configuración. Su validación contra el
+tenant y la API compartidos sigue pendiente; Matchmaking real y sesión única también.
 Contratos: [battlehub-contracts](https://github.com/javiercoulon-public/battlehub-contracts).
+
+## Activar Auth0 y Profile Service
+
+Consulta [la guía de integración](docs/auth0-profile-integration.md) para configurar el tenant,
+Client ID, Audience, URL de la API y callbacks. Por defecto se usa `BATTLEHUB_AUTH_MODE=mock`.
+El modo `auth0` muestra login real, perfil, permisos y catálogo; las salas y el juego demo
+siguen disponibles en modo mock. Un fallo del servicio real no activa datos simulados.
 
 ## Versiones (ADR-003)
 
@@ -83,8 +91,8 @@ al juego en `currentUser`. La sesión vive en memoria y se pierde al recargar.
 
 La ruta `play` redirige a `login` si no hay sesión. Para cerrar sesión, abre **Sesión de prueba**
 y pulsa **Cerrar sesión de prueba**. Navegar fuera del juego ejecuta la limpieza de su host.
-Esta restricción de interfaz no sustituye la autorización de las APIs. La integración real
-con Auth0 requerirá otro adaptador y completar el flujo de redirección y tokens.
+Esta restricción de interfaz no sustituye la autorización de las APIs. El modo real usa
+`src/auth/auth0-auth-service.ts` para redirección, callback y tokens del SDK Auth0.
 
 ### Perfil y catálogo de prueba
 
@@ -95,9 +103,9 @@ del demo debe estar encendido para cargarlo. Ambas páginas requieren sesión si
 
 `src/profile/profile-service.ts` define las operaciones internas y `mock-profile-service.ts`
 las implementa en memoria, usando el usuario actual. Los modelos de `profile-models.ts`
-no son DTOs oficiales del Equipo 1. No se consulta su API ni se verifican permisos reales.
-Las páginas manejan carga, error y catálogo vacío. Más adelante se registrará un adaptador
-HTTP para traducir el contrato acordado del servicio externo a estos modelos internos.
+son modelos internos de presentación. En modo mock no se consulta la API ni se verifican
+permisos reales. En modo auth0, `src/profile/http-profile-service.ts` sincroniza el usuario
+y traduce los DTOs actuales del Equipo 1. Las páginas manejan carga, error y catálogo vacío.
 
 ### Salas simuladas
 
