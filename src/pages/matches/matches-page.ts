@@ -6,6 +6,7 @@ import { IRemoteMatchmaking, type RemoteRoom } from '../../matchmaking/remote-ma
 import type { GameHost } from '../../games/game-host';
 import type { GameContext } from '../../games/game-contracts';
 import { loadRemotesConfig } from '../../games/remote-loader';
+import { roomStatus } from '../../games/game-presentation';
 
 export class MatchesPage {
   public readonly auth = resolve(IAuthService);
@@ -23,6 +24,19 @@ export class MatchesPage {
   public host?: GameHost;
   public context?: GameContext;
   public gameMessage = '';
+  public query = '';
+  public filterGame = '';
+  public showCreate = false;
+  public pendingCancel?: RemoteRoom;
+  public readonly statusLabel = roomStatus;
+  public get filteredRooms(): RemoteRoom[] {
+    const query = this.query.trim().toLocaleLowerCase();
+    return this.rooms.filter(room => (!query || room.title.toLocaleLowerCase().includes(query)) &&
+      (!this.filterGame || room.gameType === this.filterGame));
+  }
+  public ownerName(room: RemoteRoom): string {
+    return room.participants.find(player => player.userId === room.createdBy)?.displayName ?? 'Anfitrión fuera de la sala';
+  }
   private connection?: HubConnection;
   private timer?: ReturnType<typeof setInterval>;
   private active = false;
@@ -94,10 +108,15 @@ export class MatchesPage {
     }
   }
   public create(): Promise<void> {
-    return this.run(async () => { await this.service.create(this.title, this.gameType, Number(this.maxPlayers)); this.title = ''; });
+    return this.run(async () => { await this.service.create(this.title, this.gameType, Number(this.maxPlayers)); this.title = ''; this.showCreate = false; });
   }
   public act(room: RemoteRoom, action: 'join' | 'leave' | 'start' | 'cancel'): Promise<void> {
     return this.run(async () => { await this.service.action(room.id, action); });
+  }
+  public async confirmCancel(): Promise<void> {
+    if (!this.pendingCancel) return;
+    await this.act(this.pendingCancel, 'cancel');
+    this.pendingCancel = undefined;
   }
   private async run(action: () => Promise<void>): Promise<void> {
     if (this.busy) return;

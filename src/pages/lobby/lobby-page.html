@@ -1,24 +1,8 @@
-<section>
-  <h1>Salas de prueba</h1>
-  <p>Simulación local para el demo: las salas no se comparten con otros usuarios y se reinician al recargar o cambiar de sesión. Puedes iniciar el demo de tu sala sin esperar otros participantes.</p>
-  <form submit.trigger="create()">
-    <label for="room-title">Nombre de la sala</label>
-    <input id="room-title" value.bind="title" required maxlength="60" disabled.bind="busy || currentRoom">
-    <button type="submit" disabled.bind="busy || currentRoom">Crear sala demo</button>
-  </form>
-  <button click.trigger="refresh()" disabled.bind="busy">Actualizar salas</button>
-  <p if.bind="busy" role="status">Actualizando salas…</p>
-  <p if.bind="error" role="alert">${error}</p>
-  <p if.bind="currentRoom">Tu sala: <strong>${currentRoom.title}</strong></p>
-  <p if.bind="!busy && !error && rooms.length === 0">No hay salas. Crea la primera.</p>
-  <div class="catalog-grid">
-    <article class="catalog-card" repeat.for="room of rooms">
-      <h2>${room.title}</h2>
-      <p>Demo · ${room.participants.length}/${room.maxPlayers} participantes</p>
-      <ul><li repeat.for="player of room.participants">${player.displayName}</li></ul>
-      <button if.bind="isMember(room)" click.trigger="leave()" disabled.bind="busy">Salir de la sala</button>
-      <button else click.trigger="join(room.id)" disabled.bind="busy || currentRoom || room.participants.length >= room.maxPlayers">Entrar a la sala</button>
-      <a if.bind="isMember(room) && !busy" class="home-action" href="/room-play/${room.id}">Iniciar demo de la sala</a>
-    </article>
-  </div>
+<section aria-labelledby="lobby-title">
+  <div class="rooms-hero"><div><span class="eyebrow">EXPLORA EL MODO DEMO</span><h1 id="lobby-title">Salas de prueba</h1><p>Prepara una sala y prueba el recorrido del juego de demostración.</p><span class="badge badge-muted">Simulación local · ${rooms.length} salas</span></div></div>
+  <p class="alert">Las salas no se comparten con otros usuarios y se reinician al recargar o cambiar de sesión. Puedes iniciar el demo sin esperar otros participantes.</p>
+  <div class="panel create-panel"><h2>Crea tu sala de prueba</h2><form class="room-form" submit.trigger="create()"><label for="room-title">Nombre de la sala<input id="room-title" value.bind="title" required maxlength="60" disabled.bind="busy || currentRoom" placeholder="Dale un nombre a tu sala"></label><button type="submit" disabled.bind="busy || currentRoom">Crear sala demo</button><button class="button-secondary" type="button" click.trigger="refresh()" disabled.bind="busy">↻ Actualizar salas</button></form></div>
+  <p if.bind="busy" class="alert" role="status">Actualizando salas…</p><p if.bind="error" class="alert alert-error" role="alert">${error}</p><p if.bind="currentRoom" class="muted">Tu sala: <strong>${currentRoom.title}</strong></p>
+  <div if.bind="!busy && !error && !rooms.length" class="empty-state"><span aria-hidden="true">♧</span><h2>No hay salas. Crea la primera.</h2><p>Tu demo estará listo en cuanto prepares la sala.</p></div>
+  <div class="catalog-grid"><article class="panel demo-room" repeat.for="room of rooms"><span class="badge badge-purple">Demostración</span><h2>${room.title}</h2><p>Demo · ${room.participants.length}/${room.maxPlayers} participantes</p><ul class="permission-list"><li repeat.for="player of room.participants"><span class="permission-check" aria-hidden="true">✓</span>${player.displayName}</li></ul><div class="action-row"><button if.bind="isMember(room)" class="button-secondary" click.trigger="leave()" disabled.bind="busy">Salir de la sala</button><button else click.trigger="join(room.id)" disabled.bind="busy || currentRoom || room.participants.length >= room.maxPlayers">Entrar a la sala</button><a if.bind="isMember(room) && !busy" class="button" href="/room-play/${room.id}">Iniciar demo de la sala</a></div></article></div>
 </section>

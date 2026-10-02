@@ -14,7 +14,7 @@ describe('my-app', () => {
       [MyApp, Registration.singleton(IAuthService, MockAuthService), Registration.singleton(IProfileService, MockProfileService)],
     ).started;
 
-    const links = getAllBy('nav a').map(a => a.textContent?.trim());
-    expect(links).toEqual(['Inicio', 'Mi perfil', 'Juegos', 'Salas', 'Probar juego', 'Sesión de prueba']);
+    const links = getAllBy('nav a').map(a => a.getAttribute('href'));
+    expect(links).toEqual(['home', 'catalog', 'lobby', 'profile', 'play']);
   });
 });

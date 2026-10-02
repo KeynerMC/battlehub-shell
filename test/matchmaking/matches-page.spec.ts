@@ -47,6 +47,21 @@ describe('Salas reales', () => {
       expect(page.context).toBeUndefined();
     } finally { await page.detaching(); container.dispose(); }
   });
+  it('filtra las salas y confirma la cancelación antes de ejecutar la acción', async () => {
+    const { page, rooms, service, container } = setup();
+    try {
+      await page.attached();
+      page.query = 'ana';
+      expect(page.filteredRooms).toHaveLength(1);
+      page.filterGame = 'memory';
+      expect(page.filteredRooms).toHaveLength(0);
+      page.pendingCancel = rooms[0];
+      expect(service.action).not.toHaveBeenCalled();
+      await page.confirmCancel();
+      expect(service.action).toHaveBeenCalledWith('room', 'cancel');
+      expect(page.pendingCancel).toBeUndefined();
+    } finally { await page.detaching(); container.dispose(); }
+  });
   it('renderiza la plantilla Aurelia con participantes y controles', async () => {
     const { registrations, container } = setup();
     const Component = CustomElement.define({ name: 'matches-test', template }, class extends MatchesPage {});

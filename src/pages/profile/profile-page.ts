@@ -2,6 +2,7 @@ import { resolve } from 'aurelia';
 import { IAuthService } from '../../auth/auth-service';
 import { IProfileService } from '../../profile/profile-service';
 import type { UserProfile } from '../../profile/profile-models';
+import { permissionLabel } from '../../games/game-presentation';
 
 export class ProfilePage {
   public readonly auth = resolve(IAuthService);
@@ -10,6 +11,11 @@ export class ProfilePage {
   public permissions: string[] = [];
   public busy = false;
   public error = '';
+  public readonly permissionLabel = permissionLabel;
+
+  public get initials(): string {
+    return (this.profile?.displayName ?? '').trim().split(/\s+/).slice(0, 2).map(word => word[0]).join('').toUpperCase();
+  }
 
   public canLoad(): boolean | string { return this.auth.user ? true : 'login'; }
 

@@ -1,20 +1,10 @@
-<section class="home-intro">
-  <h1>Mi perfil</h1>
-  <p if.bind="auth.mode === 'mock'">Datos simulados de la sesión actual. Todavía no se consulta el servicio de perfiles.</p>
-  <p if.bind="busy" role="status">Cargando perfil…</p>
-  <div if.bind="error" role="alert">
-    <p>${error}</p>
-    <button click.trigger="loading()" disabled.bind="busy">Reintentar</button>
+<section aria-labelledby="profile-title">
+  <div class="page-heading"><div><span class="eyebrow">TU ESPACIO EN LA ARENA</span><h1 id="profile-title">Mi perfil</h1><p>Tu cuenta y tus accesos, en un solo lugar.</p></div><a href="/catalog" class="button button-secondary">Ver catálogo de juegos →</a></div>
+  <p if.bind="auth.mode === 'mock'" class="alert">Datos simulados de la sesión actual. No se consulta el servicio de perfiles.</p>
+  <p if.bind="busy" class="alert" role="status">Cargando perfil…</p>
+  <div if.bind="error" class="alert alert-error" role="alert"><p>${error}</p><button click.trigger="loading()" disabled.bind="busy">Reintentar</button></div>
+  <div if.bind="profile" class="profile-layout">
+    <article class="panel profile-card"><span class="avatar avatar-large">${initials}</span><span class="badge badge-success">Sesión activa</span><h2>${profile.displayName}</h2><p>${profile.email || 'Tu perfil de BattleHub'}</p><dl class="profile-details"><dt>Nombre</dt><dd>${profile.displayName}</dd><dt if.bind="profile.email">Correo</dt><dd if.bind="profile.email">${profile.email}</dd></dl><details><summary>Identificador de cuenta</summary><p class="account-id">${profile.id}</p></details></article>
+    <div class="profile-side"><article class="panel"><span class="eyebrow">LISTO PARA JUGAR</span><h2>Tus permisos</h2><p if.bind="auth.mode === 'mock'">El modo prueba permite explorar el demo con datos simulados.</p><p if.bind="auth.mode === 'auth0' && !permissions.length">No tienes permisos asignados.</p><ul class="permission-list"><li repeat.for="permission of permissions"><span class="permission-check" aria-hidden="true">✓</span>${permissionLabel(permission)}</li></ul></article><article class="panel"><h2>Elige tu siguiente desafío</h2><p>Consulta los juegos habilitados y encuentra una sala para comenzar.</p><a href="/catalog" class="button">Explorar juegos →</a></article></div>
   </div>
-  <dl if.bind="profile">
-    <dt>Nombre</dt><dd>${profile.displayName}</dd>
-    <dt>Identificador</dt><dd>${profile.id}</dd>
-    <dt if.bind="profile.email">Correo</dt><dd if.bind="profile.email">${profile.email}</dd>
-  </dl>
-  <div if.bind="profile && auth.mode === 'auth0'">
-    <h2>Permisos</h2>
-    <p if.bind="permissions.length === 0">No tienes permisos asignados.</p>
-    <ul><li repeat.for="permission of permissions">${permission}</li></ul>
-  </div>
-  <a href="/catalog">Ver catálogo de juegos</a>
 </section>

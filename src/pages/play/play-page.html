@@ -1,15 +1,8 @@
 <import from="../../games/game-host"></import>
 <section>
-  <h1>Prueba de integración de juegos</h1>
-  <p if.bind="roomId">Sala de origen: ${roomId}. Al salir regresarás a las salas conservando tu participación.</p>
-  <p if.bind="error" role="alert">${error}</p>
-  <p>Usuario y partida simulados. Esta pantalla todavía no está conectada a Auth0 ni Matchmaking.</p>
-  <p if.bind="!inMatch" data-testid="lobby">Lobby de prueba: listo para cargar el demo.</p>
-  <div>
-    <button data-testid="start-match" click.trigger="startMatch()" disabled.bind="inMatch">Cargar demo</button>
-    <button click.trigger="host.pause()" disabled.bind="host.status !== 'running'">Pausar</button>
-    <button click.trigger="host.resume()" disabled.bind="host.status !== 'paused'">Reanudar</button>
-    <button click.trigger="host.exit()" disabled.bind="!inMatch">Volver al lobby</button>
-  </div>
+  <div class="page-heading"><div><span class="eyebrow">MODO DEMOSTRACIÓN</span><h1>Prueba de integración de juegos</h1><p>Explora el juego de prueba dentro de BattleHub.</p></div><a class="button button-secondary" href="/lobby">Ver salas</a></div>
+  <p if.bind="roomId" class="alert">Sala de origen: ${roomId}. Al salir regresarás a las salas conservando tu participación.</p><p if.bind="error" class="alert alert-error" role="alert">${error}</p><p class="muted">Usuario y partida simulados. Esta pantalla no está conectada a Auth0 ni Matchmaking.</p>
+  <div class="panel play-toolbar"><p if.bind="!inMatch" data-testid="lobby">Lobby de prueba: listo para cargar el demo.</p><div class="action-row"><button data-testid="start-match" click.trigger="startMatch()" disabled.bind="inMatch">Cargar demo</button><button class="button-secondary" click.trigger="host.pause()" disabled.bind="host.status !== 'running'">Pausar</button><button class="button-secondary" click.trigger="host.resume()" disabled.bind="host.status !== 'paused'">Reanudar</button><button class="button-secondary" click.trigger="host.exit()" disabled.bind="!inMatch">Volver al lobby</button></div></div>
   <game-host component.ref="host" context.bind="context" on-exit.bind="onExit"></game-host>
+  <p if.bind="inMatch" class="desktop-game-notice alert">Para jugar, utiliza una ventana de escritorio de al menos 1366 × 768. Puedes desplazar el área del juego horizontalmente.</p>
 </section>
