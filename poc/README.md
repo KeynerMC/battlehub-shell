@@ -6,7 +6,7 @@ Evidencia del ADR-003 de `battlehub-contracts`: un **Shell** (host) carga en tie
 | Carpeta | Qué es | Puerto |
 |---|---|---|
 | `shell/` | Host. Lee `remotes.config.json`, carga el remote, invoca `initialize/start/pause/dispose` y muestra la pantalla de error | 4000 |
-| `demo-game/` | Remote. Expone `./GameModule` (implementa la interfaz `GameModule`) | 4001 |
+| `demo-game/` | Remote. Expone `./GameModule` (implementa la interfaz `GameModule`) | 4004 |
 | `e2e/` | Script de Playwright que ejecuta los 4 escenarios y toma las capturas | — |
 
 ## Requisitos
@@ -16,7 +16,7 @@ Evidencia del ADR-003 de `battlehub-contracts`: un **Shell** (host) carga en tie
 ## Cómo correrlo a mano
 
 ```bash
-cd demo-game && npm install && npm start     # terminal 1 -> http://localhost:4001
+cd demo-game && npm install && npm start     # terminal 1 -> http://localhost:4004
 cd shell && npm install && npm start         # terminal 2 -> http://localhost:4000
 ```
 

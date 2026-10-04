@@ -52,7 +52,7 @@ npm.cmd ci
 npm.cmd start
 ```
 
-El remote escucha en el puerto 4001. En el Shell (puerto 4000), abre **Probar juego**
+El remote escucha en el puerto 4004. En el Shell (puerto 4000), abre **Probar juego**
 y entra primero con un nombre en **Sesión de prueba**. Después abre **Probar juego**
 y pulsa **Cargar demo**. El usuario y la partida son simulados; el componente se descarga
 realmente del otro servidor. Comprueba el contador, pausa, reanudación y regreso al lobby.
@@ -126,7 +126,7 @@ En tu sala, **Iniciar demo de la sala** abre `room-play/:roomId` y carga el remo
 El identificador de la sala se entrega como `matchId`, junto al usuario de la sesión. Se valida
 la pertenencia antes de abrir y antes de cargar el juego. **Volver al lobby** libera el juego
 y regresa a Salas conservando tu participación; **Salir de la sala** sí te retira de ella.
-El remote debe estar encendido en el puerto 4001. Si falla, puedes reintentar o volver a las salas.
+El remote debe estar encendido en el puerto 4004. Si falla, puedes reintentar o volver a las salas.
 `prepareGame` es una operación interna del mock, no un contrato HTTP ni un evento MatchStarted
 oficial. No cambia el estado de los demás participantes ni inicia una partida multijugador real.
 
@@ -166,6 +166,8 @@ y conserva las evidencias disponibles durante 7 días como `e2e-failure-evidence
 
 La integración real con el Equipo 2 se documenta en [Salas y Matchmaking](docs/matchmaking-integration.md).
 La nueva ruta es `/matches`; requiere `MATCHMAKING_SERVICE_URL`, MongoDB y ambos servicios en ejecución.
+
+La [integración local con Typing](docs/typing-integration.md) registra su remote en 4001, entrega tokens de usuario para su propia audiencia y conserva la vista de resultados al finalizar. El demo usa ahora 4004. La URL desplegada de Typing está pendiente.
 
 - Commits en formato semántico (`feat:`, `fix:`, `docs:`, `test:`, `chore:`, `ci:`...).
 - `main` protegida: todo cambio entra por Pull Request con CI en verde y al menos 1 aprobación.

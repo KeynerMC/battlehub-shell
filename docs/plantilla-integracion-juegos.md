@@ -16,7 +16,7 @@ El Shell carga el frontend del juego mediante Module Federation. Después, el ju
 
 Los nombres y puertos son los de la plantilla ADR-003. Si usan otros, deben informarlos para registrar los valores reales. El puerto de la API es independiente del puerto del frontend.
 
-Actualmente solo está registrado `demo`, que también usa el puerto 4001. Para probar Typing en ese puerto, detener primero el demo o acordar otro puerto. Tener un registro en el catálogo de Profile no significa que el remote ya esté disponible.
+La copia local registra Typing en el puerto 4001 y el demo en el puerto 4004, para que puedan ejecutarse juntos. Tener un registro en el catálogo de Profile no significa que el remote ya esté disponible.
 
 ## 2. Preparar el frontend del juego
 
@@ -73,7 +73,7 @@ interface GameModule {
 
 Si falla la preparación o el arranque, rechazar la promesa para que el Shell muestre el error. Usar el `matchId` recibido; no generar otro identificador para representar la sala.
 
-El contexto **no contiene access token, proveedor de tokens ni Client Secret**. `currentUser` sirve como contexto visual, no como prueba de identidad para el backend. Antes de integrar operaciones protegidas de la API o del hub del juego, hay que acordar con los Equipos 1 y 3 cómo obtener la autorización necesaria: el contrato actual no entrega ese mecanismo. La audiencia compartida propuesta en ADR-007 solo contempla Profile y Matchmaking.
+El contrato central conserva los tres campos anteriores. Para Typing, esta copia local añade una extensión opcional `getAccessToken(): Promise<string>`, compatible con la extensión del Equipo 4. El juego la llama para obtener un token de usuario destinado a su API; no recibe credenciales M2M ni Client Secret. `currentUser.id` conserva exactamente el `sub` de Auth0. Esta extensión requiere coordinación con el profesor y no se presenta como una decisión aprobada del contrato. La audiencia compartida propuesta en ADR-007 solo contempla Profile y Matchmaking. Consulta [la integración local de Typing](typing-integration.md) para la configuración de las dos audiencias.
 
 ## 4. Qué cambia el Equipo 3 en el Shell
 
@@ -99,7 +99,7 @@ Al ejecutarse dentro del Shell, las llamadas del navegador salen desde el origen
 
 El juego renderiza dentro del espacio asignado. Evitar estilos globales sobre `body`, `html` o la navegación. Usar clases con prefijo del juego, conservar header/footer y comprobar la resolución mínima de 1366 × 768 del contrato.
 
-Cerrar el microfrontend libera recursos locales; **no finaliza la partida en Matchmaking**. La copia local de Matchmaking no expone `/finish`. El mecanismo concreto de finalización debe coordinarse con el Equipo 2 y el Tech Lead; el callback propuesto en ADR-004 no se debe presentar como disponible.
+Cerrar el microfrontend libera recursos locales; **no finaliza la partida en Matchmaking**. Nuestra copia de integración de Matchmaking implementa ahora `POST /api/matches/{matchId}/finish`, llamado por el backend del juego con su token M2M y `matches.finish`. Esto no confirma que el Equipo 2 lo haya publicado. Coordinar la versión del backend y el callback con ese equipo y el Tech Lead; ADR-004 sigue siendo la referencia propuesta.
 
 ## 6. Plantilla de entrega al Equipo 3
 
