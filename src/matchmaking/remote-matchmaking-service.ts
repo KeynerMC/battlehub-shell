@@ -8,6 +8,9 @@ export interface RemoteRoom {
   participants: { userId: string; displayName: string }[];
 }
 export const IRemoteMatchmaking = DI.createInterface<RemoteMatchmakingService>('IRemoteMatchmaking');
+export class MatchmakingError extends Error {
+  public constructor(public readonly status: number, message: string) { super(message); }
+}
 const events = ['MatchCreated', 'MatchUpdated', 'MatchDeleted', 'PlayerJoined', 'PlayerLeft', 'MatchStarting', 'MatchStarted', 'MatchFinished'];
 
 export function parseRoom(value: unknown): RemoteRoom {
@@ -47,7 +50,7 @@ export class RemoteMatchmakingService {
         409: 'La sala cambió, está llena o no cumple las condiciones. Actualiza; para iniciar se requieren dos jugadores y el anfitrión.',
         503: 'Matchmaking no puede acceder a MongoDB o Profile Service.',
       };
-      throw new Error(messages[response.status] || `Matchmaking respondió con error (${response.status}).`);
+      throw new MatchmakingError(response.status, messages[response.status] || `Matchmaking respondió con error (${response.status}).`);
     }
     const result: unknown = await response.json();
     if (this.auth.user !== user) throw new Error('La sesión cambió.');
@@ -60,6 +63,9 @@ export class RemoteMatchmakingService {
   }
   public async create(title: string, gameType: string, maxPlayers: number): Promise<RemoteRoom> {
     return parseRoom(await this.request('', 'POST', { title, gameType, maxPlayers }));
+  }
+  public async get(id: string): Promise<RemoteRoom> {
+    return parseRoom(await this.request(`/${encodeURIComponent(id)}`));
   }
   public async action(id: string, action: 'join' | 'leave' | 'start' | 'cancel'): Promise<RemoteRoom> {
     return parseRoom(await this.request(`/${encodeURIComponent(id)}${action === 'cancel' ? '' : '/' + action}`, action === 'cancel' ? 'DELETE' : 'POST'));

@@ -3,6 +3,7 @@ export interface ShellConfiguration {
   domain?: string;
   clientId?: string;
   audience?: string;
+  typingAudience?: string;
   profileServiceUrl?: string;
   matchmakingServiceUrl?: string;
 }
@@ -39,6 +40,7 @@ export function readConfiguration(values: Record<string, string | undefined>): S
     matchmakingServiceUrl = url.origin;
   }
   return { mode, domain, clientId, audience, profileServiceUrl: api.origin,
+    ...(values.AUTH0_TYPING_AUDIENCE?.trim() ? { typingAudience: values.AUTH0_TYPING_AUDIENCE.trim() } : {}),
     ...(matchmakingServiceUrl ? { matchmakingServiceUrl } : {}) };
 }
 
@@ -49,6 +51,7 @@ export function loadConfiguration(): ShellConfiguration {
     AUTH0_DOMAIN: process.env.AUTH0_DOMAIN,
     AUTH0_CLIENT_ID: process.env.AUTH0_CLIENT_ID,
     AUTH0_AUDIENCE: process.env.AUTH0_AUDIENCE,
+    AUTH0_TYPING_AUDIENCE: process.env.AUTH0_TYPING_AUDIENCE,
     PROFILE_SERVICE_URL: process.env.PROFILE_SERVICE_URL,
     MATCHMAKING_SERVICE_URL: process.env.MATCHMAKING_SERVICE_URL,
   });

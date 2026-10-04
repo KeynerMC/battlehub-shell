@@ -60,7 +60,7 @@ module.exports = function(env, { analyze }) {
     devServer: {
       historyApiFallback: true,
       open: false,
-      port: 4001,
+      port: 4004,
       headers: { 'Access-Control-Allow-Origin': '*' }
     },
     module: {

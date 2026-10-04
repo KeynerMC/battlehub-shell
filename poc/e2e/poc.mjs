@@ -31,7 +31,7 @@ console.log('E1 error code:', code1);
 
 // Escenario 2: se levanta el remote -> Reintentar -> juego cargado
 game = serve('demo-game');
-await waitUrl('http://localhost:4001/remoteEntry.js');
+await waitUrl('http://localhost:4004/remoteEntry.js');
 await page.click('[data-testid=retry-btn]');
 await page.waitForSelector('[data-testid=game-state]', { timeout: 30000 });
 await page.waitForFunction(() => document.querySelector('[data-testid=game-state]')?.textContent === 'running');
@@ -54,8 +54,8 @@ await page.screenshot({ path: '04-lobby-tras-dispose.png' });
 console.log('E4 volvió al lobby');
 
 // Evidencia de red: ¿el Shell descargó copias de Aurelia desde el remote?
-const res = await page.evaluate(() => performance.getEntriesByType('resource').map(r => r.name).filter(n => n.includes(':4001')));
-console.log('Recursos pedidos al remote (4001):', res.length, res.map(r => r.split('/').pop()).join(', '));
+const res = await page.evaluate(() => performance.getEntriesByType('resource').map(r => r.name).filter(n => n.includes(':4004')));
+console.log('Recursos pedidos al remote (4004):', res.length, res.map(r => r.split('/').pop()).join(', '));
 
 console.log('--- consola ---\n' + log.filter(l => /shell|demoGame|error|warn/i.test(l)).join('\n'));
 await browser.close(); kill(shell); kill(game);

@@ -2,7 +2,7 @@ import { resolve } from 'aurelia';
 import { HubConnectionState, type HubConnection } from '@microsoft/signalr';
 import { IAuthService } from '../../auth/auth-service';
 import { IProfileService } from '../../profile/profile-service';
-import { IRemoteMatchmaking, type RemoteRoom } from '../../matchmaking/remote-matchmaking-service';
+import { IRemoteMatchmaking, MatchmakingError, type RemoteRoom } from '../../matchmaking/remote-matchmaking-service';
 import type { GameHost } from '../../games/game-host';
 import type { GameContext } from '../../games/game-contracts';
 import { loadRemotesConfig } from '../../games/remote-loader';
@@ -24,6 +24,9 @@ export class MatchesPage {
   public host?: GameHost;
   public context?: GameContext;
   public gameMessage = '';
+  public pendingGame?: RemoteRoom;
+  public authorizingGame = false;
+  public gameFinished = false;
   public query = '';
   public filterGame = '';
   public showCreate = false;
@@ -93,7 +96,21 @@ export class MatchesPage {
         const rooms = await this.service.list();
         if (!this.active) return;
         this.rooms = rooms;
-        if (this.context && !rooms.some(r => r.id === this.context?.matchId && r.status === 'Started' && this.isMember(r))) await this.host?.exit();
+        if (this.context && !this.gameFinished && !rooms.some(r => r.id === this.context?.matchId && r.status === 'Started' && this.isMember(r))) {
+          try {
+            const detail = await this.service.get(this.context.matchId);
+            if (!this.active) return;
+            if (detail.status === 'Finished' && this.isMember(detail)) this.gameFinished = true;
+            else if (detail.status !== 'Started' || !this.isMember(detail)) await this.closeGame();
+          } catch (error) {
+            if (error instanceof MatchmakingError && error.status === 404) await this.closeGame();
+            else throw error;
+          }
+        }
+        if (this.pendingGame && !rooms.some(r => r.id === this.pendingGame?.id && r.status === 'Started' && this.isMember(r))) {
+          this.pendingGame = undefined;
+          this.gameMessage = '';
+        }
         const started = rooms.find(r => r.status === 'Started' && this.isMember(r));
         if (started && !this.context && this.entering !== started.id) await this.openGame(started);
       } while (this.refreshAgain && this.active);
@@ -127,6 +144,7 @@ export class MatchesPage {
     finally { this.busy = false; }
   }
   public async openGame(room: RemoteRoom): Promise<void> {
+    if (room.status !== 'Started' || !this.isMember(room) || this.context) return;
     this.entering = room.id;
     this.gameMessage = '';
     try {
@@ -136,11 +154,51 @@ export class MatchesPage {
         this.gameMessage = `La partida comenzó. El equipo de ${room.gameType} todavía no tiene un remote configurado.`;
         return;
       }
-      this.context = { matchId: room.id, gameType: room.gameType, currentUser: { ...this.auth.user } };
-      if (this.host) { this.host.context = this.context; await this.host.load(); }
-    } catch (error) { this.gameMessage = this.message(error); }
+      if (room.gameType === 'typing') {
+        this.pendingGame = room;
+        if (!this.auth.getGameAccessToken) throw new Error('El Shell no dispone de autorización para Typing.');
+        await this.auth.getGameAccessToken('typing');
+      }
+      await this.mountGame(room);
+    } catch (error) { if (this.active) this.gameMessage = this.message(error); }
   }
-  public onGameExit = () => { this.context = undefined; };
+  private async mountGame(room: RemoteRoom): Promise<void> {
+    const user = this.auth.user;
+    const current = await this.service.get(room.id);
+    if (!this.active || !user || this.auth.user !== user || this.context) return;
+    if (current.status !== 'Started' || !this.isMember(current) || current.gameType !== room.gameType) {
+      this.pendingGame = undefined;
+      throw new Error('La partida cambió. Actualiza las salas antes de abrir el juego.');
+    }
+    this.pendingGame = undefined;
+    this.gameMessage = '';
+    this.gameFinished = false;
+    const context: GameContext = { matchId: current.id, gameType: current.gameType, currentUser: { id: user.id, displayName: user.displayName },
+      ...(current.gameType === 'typing' ? { getAccessToken: async () => {
+        if (!this.active || this.auth.user !== user || this.context !== context) throw new Error('La sesión cambió o el juego se cerró.');
+        const token = await this.auth.getGameAccessToken!('typing');
+        if (!this.active || this.auth.user !== user || this.context !== context) throw new Error('La sesión cambió o el juego se cerró.');
+        return token;
+      } } : {}) };
+    this.context = context;
+    if (this.host) { this.host.context = this.context; await this.host.load(); }
+  }
+  public async authorizeGame(): Promise<void> {
+    const room = this.pendingGame;
+    if (!room || this.authorizingGame || !this.auth.getGameAccessToken) return;
+    this.authorizingGame = true;
+    try {
+      await this.auth.getGameAccessToken(room.gameType, true);
+      if (!this.active || this.pendingGame !== room || this.context) return;
+      await this.mountGame(room);
+    } catch (error) { if (this.active) this.gameMessage = this.message(error); }
+    finally { this.authorizingGame = false; }
+  }
+  private async closeGame(): Promise<void> {
+    await this.host?.exit();
+    this.onGameExit();
+  }
+  public onGameExit = () => { this.context = undefined; this.gameFinished = false; };
   public async detaching(): Promise<void> {
     this.active = false;
     clearInterval(this.timer);

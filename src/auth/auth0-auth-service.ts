@@ -2,14 +2,14 @@ import { Auth0Client } from '@auth0/auth0-spa-js';
 import type { AuthService, SessionUser } from './auth-service';
 import type { ShellConfiguration } from '../infrastructure/configuration';
 
-type Auth0Sdk = Pick<Auth0Client, 'handleRedirectCallback' | 'checkSession' | 'isAuthenticated' | 'getUser' | 'getTokenSilently' | 'loginWithRedirect' | 'logout'>;
+type Auth0Sdk = Pick<Auth0Client, 'handleRedirectCallback' | 'checkSession' | 'isAuthenticated' | 'getUser' | 'getTokenSilently' | 'getTokenWithPopup' | 'loginWithRedirect' | 'logout'>;
 
 export class Auth0AuthService implements AuthService {
   public readonly mode = 'auth0' as const;
   public user: SessionUser | null = null;
   public error = '';
 
-  public constructor(private readonly client: Auth0Sdk, private readonly origin: string) {}
+  public constructor(private readonly client: Auth0Sdk, private readonly origin: string, private readonly typingAudience?: string) {}
 
   public static create(config: ShellConfiguration): Auth0AuthService {
     const origin = window.location.origin;
@@ -24,7 +24,7 @@ export class Auth0AuthService implements AuthService {
       cacheLocation: 'memory',
       httpTimeoutInSeconds: 15,
       authorizeTimeoutInSeconds: 15,
-    }), origin);
+    }), origin, config.typingAudience);
   }
 
   public async initialize(): Promise<void> {
@@ -75,6 +75,31 @@ export class Auth0AuthService implements AuthService {
         throw new Error(this.error);
       }
       throw new Error('No se pudo obtener acceso al servicio. Reintenta o inicia sesión de nuevo.');
+    }
+  }
+
+  public async getGameAccessToken(gameType: string, interactive = false): Promise<string> {
+    if (gameType !== 'typing' || !this.typingAudience) {
+      throw new Error('Falta configurar la audiencia del juego en el Shell. Para Typing, configura AUTH0_TYPING_AUDIENCE y reinicia.');
+    }
+    const user = this.user;
+    if (!user) throw new Error('Inicia sesión para jugar.');
+    const options = { authorizationParams: { audience: this.typingAudience, scope: 'openid profile email' } };
+    try {
+      const token = interactive
+        ? await this.client.getTokenWithPopup(options)
+        : await this.client.getTokenSilently(options);
+      const identity = await this.client.getUser();
+      if (this.user !== user || identity?.sub !== user.id) {
+        this.user = null;
+        this.error = 'La sesión cambió. Vuelve a iniciar sesión antes de jugar.';
+        throw new Error(this.error);
+      }
+      if (!token) throw new Error('Missing access token');
+      return token;
+    } catch {
+      if (this.user !== user) throw new Error('La sesión cambió. Vuelve a iniciar sesión antes de jugar.');
+      throw new Error('No se pudo autorizar Typing. Pulsa Autorizar Typing, permite la ventana de Auth0 y verifica la API del juego.');
     }
   }
 

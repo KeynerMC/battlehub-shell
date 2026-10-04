@@ -1,3 +1,4 @@
 {
-  "demo": { "scope": "demoGame", "url": "http://localhost:4001/remoteEntry.js", "module": "./GameModule" }
+  "demo": { "scope": "demoGame", "url": "http://localhost:4004/remoteEntry.js", "module": "./GameModule" },
+  "typing": { "scope": "typingGame", "url": "http://localhost:4001/remoteEntry.js", "module": "./GameModule" }
 }

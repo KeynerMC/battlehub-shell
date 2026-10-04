@@ -28,7 +28,7 @@ export default defineConfig({
     {
       command: 'node node_modules/webpack-cli/bin/cli.js serve',
       cwd: fileURLToPath(new URL('../poc/demo-game/', import.meta.url)),
-      url: 'http://localhost:4001/remoteEntry.js',
+      url: 'http://localhost:4004/remoteEntry.js',
       env: { CI: '1' },
       reuseExistingServer: false,
       timeout: 120_000,
