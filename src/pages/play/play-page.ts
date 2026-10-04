@@ -16,6 +16,7 @@ export class PlayPage {
   public context: GameContext;
 
   public async canLoad(params: Params = {}): Promise<boolean | string> {
+    if (this.auth.mode === 'auth0') return 'catalog';
     if (!this.auth.user) return 'login';
     this.roomId = typeof params.roomId === 'string' ? params.roomId : null;
     if (this.roomId) {

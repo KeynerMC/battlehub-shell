@@ -2,10 +2,21 @@
 
 Shell Application de **BattleHub** — Equipo 3 (Grupo 1), curso de Paradigmas, UNA.
 
-El Shell es la aplicación contenedora de la plataforma. La aplicación principal incluye navegación
-y una pantalla de prueba que carga el juego demo con Module Federation. Auth0, Profile Service,
-Matchmaking y el control de sesión única siguen pendientes.
+El Shell reúne el inicio de sesión con Auth0, el perfil del usuario, el catálogo y las salas
+de Matchmaking. Los juegos se cargan mediante Module Federation. También incluye un modo
+de demostración con datos en memoria y un juego de prueba.
 Contratos: [battlehub-contracts](https://github.com/javiercoulon-public/battlehub-contracts).
+
+La [guía de interfaz](docs/interfaz-shell.md) describe las pantallas, el alcance del rediseño
+y las pruebas visuales. Para los equipos de juegos, consultar la
+[plantilla de integración con el Shell](docs/plantilla-integracion-juegos.md).
+
+## Activar Auth0 y Profile Service
+
+Consulta [la guía de integración](docs/auth0-profile-integration.md) para configurar el tenant,
+Client ID, Audience, URL de la API y callbacks. Por defecto se usa `BATTLEHUB_AUTH_MODE=mock`.
+El modo `auth0` permite acceder al perfil, catálogo y salas reales en `/matches`.
+El modo `mock` conserva las salas de demostración y el juego demo.
 
 ## Versiones (ADR-003)
 
@@ -41,7 +52,7 @@ npm.cmd ci
 npm.cmd start
 ```
 
-El remote escucha en el puerto 4001. En el Shell (puerto 4000), abre **Probar juego**
+El remote escucha en el puerto 4004. En el Shell (puerto 4000), abre **Probar juego**
 y entra primero con un nombre en **Sesión de prueba**. Después abre **Probar juego**
 y pulsa **Cargar demo**. El usuario y la partida son simulados; el componente se descarga
 realmente del otro servidor. Comprueba el contador, pausa, reanudación y regreso al lobby.
@@ -83,8 +94,8 @@ al juego en `currentUser`. La sesión vive en memoria y se pierde al recargar.
 
 La ruta `play` redirige a `login` si no hay sesión. Para cerrar sesión, abre **Sesión de prueba**
 y pulsa **Cerrar sesión de prueba**. Navegar fuera del juego ejecuta la limpieza de su host.
-Esta restricción de interfaz no sustituye la autorización de las APIs. La integración real
-con Auth0 requerirá otro adaptador y completar el flujo de redirección y tokens.
+Esta restricción de interfaz no sustituye la autorización de las APIs. El modo real usa
+`src/auth/auth0-auth-service.ts` para redirección, callback y tokens del SDK Auth0.
 
 ### Perfil y catálogo de prueba
 
@@ -95,9 +106,9 @@ del demo debe estar encendido para cargarlo. Ambas páginas requieren sesión si
 
 `src/profile/profile-service.ts` define las operaciones internas y `mock-profile-service.ts`
 las implementa en memoria, usando el usuario actual. Los modelos de `profile-models.ts`
-no son DTOs oficiales del Equipo 1. No se consulta su API ni se verifican permisos reales.
-Las páginas manejan carga, error y catálogo vacío. Más adelante se registrará un adaptador
-HTTP para traducir el contrato acordado del servicio externo a estos modelos internos.
+son modelos internos de presentación. En modo mock no se consulta la API ni se verifican
+permisos reales. En modo auth0, `src/profile/http-profile-service.ts` sincroniza el usuario
+y traduce los DTOs actuales del Equipo 1. Las páginas manejan carga, error y catálogo vacío.
 
 ### Salas simuladas
 
@@ -115,7 +126,7 @@ En tu sala, **Iniciar demo de la sala** abre `room-play/:roomId` y carga el remo
 El identificador de la sala se entrega como `matchId`, junto al usuario de la sesión. Se valida
 la pertenencia antes de abrir y antes de cargar el juego. **Volver al lobby** libera el juego
 y regresa a Salas conservando tu participación; **Salir de la sala** sí te retira de ella.
-El remote debe estar encendido en el puerto 4001. Si falla, puedes reintentar o volver a las salas.
+El remote debe estar encendido en el puerto 4004. Si falla, puedes reintentar o volver a las salas.
 `prepareGame` es una operación interna del mock, no un contrato HTTP ni un evento MatchStarted
 oficial. No cambia el estado de los demás participantes ni inicia una partida multijugador real.
 
@@ -152,6 +163,11 @@ Instala las dependencias del demo y Chromium automáticamente. Si un E2E falla, 
 y conserva las evidencias disponibles durante 7 días como `e2e-failure-evidence` en GitHub Actions.
 
 ## Convenciones del repositorio
+
+La integración real con el Equipo 2 se documenta en [Salas y Matchmaking](docs/matchmaking-integration.md).
+La nueva ruta es `/matches`; requiere `MATCHMAKING_SERVICE_URL`, MongoDB y ambos servicios en ejecución.
+
+La [integración local con Typing](docs/typing-integration.md) registra su remote en 4001, entrega tokens de usuario para su propia audiencia y conserva la vista de resultados al finalizar. El demo usa ahora 4004. La URL desplegada de Typing está pendiente.
 
 - Commits en formato semántico (`feat:`, `fix:`, `docs:`, `test:`, `chore:`, `ci:`...).
 - `main` protegida: todo cambio entra por Pull Request con CI en verde y al menos 1 aprobación.

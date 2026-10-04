@@ -14,7 +14,7 @@ npx.cmd playwright install chromium
 npm.cmd test
 ```
 
-Detén previamente cualquier servidor en los puertos 4000 y 4001. Playwright levanta
+Detén previamente cualquier servidor en los puertos 4000 y 4004. Playwright levanta
 y cierra ambos servidores automáticamente; no reutiliza procesos existentes.
 Para ver el navegador, utiliza `npm.cmd run test:headed`.
 

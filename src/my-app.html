@@ -1,16 +1,43 @@
+<a class="skip-link" href="#main-content" external>Ir al contenido</a>
 <header class="shell-header">
-  <span class="shell-brand">BattleHub</span>
+  <a class="shell-brand" href="/home" aria-label="BattleHub, inicio">
+    <span class="brand-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M7 7h10c2 0 3 2 3.5 4l1 6c.4 2-2 3-3.3 1.4L16 16H8l-2.2 2.4C4.5 20 2.1 19 2.5 17l1-6C4 9 5 7 7 7Z"/><path d="M8 10v5m-2.5-2.5h5M16 11h.01M18 14h.01"/></svg></span>BattleHub
+  </a>
   <nav class="shell-nav" aria-label="Navegación principal">
-    <a href="home">Inicio</a>
-    <a href="profile">Mi perfil</a>
-    <a href="catalog">Juegos</a>
-    <a href="lobby">Salas</a>
-    <a href="play">Probar juego</a>
-    <a href="login">Sesión de prueba</a>
+    <a href="home"><span aria-hidden="true">▦</span> Inicio</a>
+    <a href="catalog"><span aria-hidden="true">▤</span> Juegos</a>
+    <a if.bind="auth.mode === 'mock'" href="lobby"><span aria-hidden="true">♧</span> Salas</a>
+    <a if.bind="auth.mode === 'auth0'" href="matches"><span aria-hidden="true">♧</span> Salas</a>
+    <a href="profile"><span aria-hidden="true">♙</span> Mi perfil</a>
+    <a if.bind="auth.mode === 'mock'" href="play" class="demo-nav">Probar juego</a>
   </nav>
-  <span if.bind="auth.user">${auth.user.displayName} · Sesión simulada</span>
+  <div class="header-account">
+    <span if.bind="auth.mode === 'mock'" class="badge badge-muted">Modo prueba</span>
+    <a if.bind="!auth.user" href="login" class="button button-small">${auth.mode === 'mock' ? 'Sesión de prueba' : 'Iniciar sesión'}</a>
+    <div if.bind="auth.user" class="account-menu">
+      <button class="account-toggle button-quiet" click.trigger="menuOpen = !menuOpen" aria-expanded.bind="menuOpen" aria-controls="account-options" aria-label="Opciones de sesión">
+        <span class="avatar">${initials}</span><span class="account-name">${auth.user.displayName}</span><span aria-hidden="true">⌄</span>
+      </button>
+      <div if.bind="menuOpen" id="account-options" class="account-dropdown">
+        <p>${auth.user.displayName}</p>
+        <a href="/login" click.trigger="closeMenu()">${auth.mode === 'mock' ? 'Sesión de prueba' : 'Mi sesión'}</a>
+        <button class="button-quiet" click.trigger="signOut()" disabled.bind="signingOut">${signingOut ? 'Cerrando…' : 'Cerrar sesión'}</button>
+      </div>
+    </div>
+  </div>
 </header>
-<main class="shell-content">
+<main id="main-content" class="shell-content" tabindex="-1">
+  <p if.bind="auth.error" class="alert alert-error" role="alert">${auth.error} <a href="/login">Iniciar sesión</a></p>
+  <p if.bind="sessionError" class="alert alert-error" role="alert">${sessionError}</p>
+  <p if.bind="auth.user && profiles.status === 'loading'" class="alert" role="status">Sincronizando tu perfil…</p>
+  <div if.bind="auth.user && profiles.error" class="alert alert-error" role="alert">
+    <p>Tu sesión está iniciada, pero falta completar el perfil. ${profiles.error}</p>
+    <button click.trigger="retryProfile()" disabled.bind="profiles.status === 'loading'">Reintentar sincronización</button>
+    <a href="/login">Revisar sesión</a>
+  </div>
   <au-viewport></au-viewport>
 </main>
-<footer class="shell-footer">BattleHub · Plataforma universitaria de minijuegos</footer>
+<footer class="shell-footer">
+  <span class="shell-brand"><span class="footer-mark" aria-hidden="true">✦</span> BattleHub</span>
+  <span>Plataforma universitaria de juegos · Equipo 3</span><span>Typing · Trivia · Memory</span>
+</footer>

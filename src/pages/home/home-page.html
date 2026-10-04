@@ -1,14 +1,39 @@
-<section class="home-intro" aria-labelledby="home-title">
-  <h1 id="home-title">Bienvenido a BattleHub</h1>
-  <p>Un lugar para encontrarte con otros jugadores y participar en minijuegos educativos.</p>
-  <p>Estamos construyendo la plataforma. Por ahora puedes probar un juego de demostración con un usuario y una partida simulados.</p>
-  <a class="home-action" href="/play">Probar juego demo</a>
+<section class="hero ${auth.user ? 'hero-dashboard' : 'hero-landing'}" aria-labelledby="home-title">
+  <div class="hero-glow" aria-hidden="true"></div>
+  <div class="hero-copy">
+    <span class="eyebrow"><span class="status-dot"></span> ${auth.user ? 'TU PRÓXIMA PARTIDA EMPIEZA AQUÍ' : 'TRES JUEGOS. UNA SOLA ARENA.'}</span>
+    <h1 id="home-title" if.bind="!auth.user">Domina la <br>arena en <span>BattleHub</span></h1>
+    <h1 else>Bienvenido de nuevo, <span>${auth.user.displayName}</span></h1>
+    <p>Velocidad, conocimiento y memoria. Elige tu desafío y encuentra tu próxima partida en BattleHub.</p>
+    <div class="action-row">
+      <a class="button" href.bind="auth.user ? '/catalog' : '/login'"><span aria-hidden="true">▷</span> ${auth.user ? 'Ver mis juegos' : 'Comenzar a jugar'}</a>
+      <a class="button button-secondary" href.bind="auth.user ? (auth.mode === 'mock' ? '/lobby' : '/matches') : '/login'">${auth.user ? 'Explorar salas' : 'Iniciar sesión'} <span aria-hidden="true">→</span></a>
+    </div>
+    <p if.bind="auth.mode === 'mock'" class="hero-note">Modo de prueba: sesión, salas y partida de demostración simuladas.</p>
+  </div>
+  <div if.bind="!auth.user" class="hero-facts" aria-label="Cómo jugar">
+    <div><strong>01</strong><span>INICIA SESIÓN</span></div><div><strong>02</strong><span>ELIGE TU JUEGO</span></div><div><strong>03</strong><span>ENTRA A UNA SALA</span></div>
+  </div>
 </section>
-<section class="home-status" aria-labelledby="status-title">
-  <h2 id="status-title">¿Qué puedes hacer ahora?</h2>
-  <ul>
-    <li>Cargar el demo, sumar puntos, pausarlo y reanudarlo.</li>
-    <li>Salir del demo y volver a su lobby de prueba.</li>
-  </ul>
-  <p>Puedes entrar con un nombre mediante una sesión de prueba. Auth0, los perfiles reales y las salas multijugador estarán disponibles en próximas etapas.</p>
+<div if.bind="auth.user" class="dashboard-summary"><a href="/catalog" class="panel summary-card"><span class="feature-icon" aria-hidden="true">▤</span><div><span>JUEGOS HABILITADOS</span><strong>${busy ? '…' : gameError ? 'Por consultar' : games.length}</strong></div></a><a href.bind="auth.mode === 'mock' ? '/lobby' : '/matches'" class="panel summary-card"><span class="feature-icon cyan" aria-hidden="true">♧</span><div><span>SALAS EN LA LISTA</span><strong>${busy ? '…' : roomError ? 'Por consultar' : rooms.length}</strong></div></a><a href="/profile" class="panel summary-card"><span class="feature-icon green" aria-hidden="true">◇</span><div><span>TU CUENTA</span><strong>Sesión activa</strong></div></a></div>
+<section if.bind="!auth.user" class="feature-grid" aria-label="La experiencia BattleHub">
+  <article class="feature-card"><span class="feature-icon cyan" aria-hidden="true">ϟ</span><h2>Tres formas de competir</h2><p>Desafía tu escritura, tus conocimientos y tu memoria en una misma plataforma.</p></article>
+  <article class="feature-card"><span class="feature-icon" aria-hidden="true">♧</span><h2>Encuentra tu sala</h2><p>Crea una partida o únete a otros jugadores. El anfitrión inicia cuando la sala está lista.</p></article>
+  <article class="feature-card"><span class="feature-icon green" aria-hidden="true">◇</span><h2>Tu cuenta, tus juegos</h2><p>Consulta tu perfil y los juegos habilitados para tu usuario desde un solo lugar.</p></article>
 </section>
+<div class="${auth.user ? 'dashboard-layout' : ''}">
+<div>
+<section class="featured-section" aria-labelledby="featured-title">
+  <div class="section-heading"><div><span class="eyebrow">ENCUENTRA TU DESAFÍO</span><h2 id="featured-title">Juegos destacados</h2><p>Reflejos rápidos, buenas respuestas y una memoria que sorprende.</p></div><a href="/catalog" class="text-link">Ver todo el catálogo <span aria-hidden="true">→</span></a></div>
+  <div class="catalog-grid featured-grid">
+    <article class="catalog-card" repeat.for="game of featuredGames">
+      <div class="game-art ${artwork(game.gameType)}" aria-hidden="true"></div>
+      <div class="game-card-body"><span class="eyebrow">${presentation(game.gameType).category}</span><h3>${game.name}</h3><p>${presentation(game.gameType).description}</p><a class="button button-secondary button-block" href="/catalog">Explorar juego <span aria-hidden="true">→</span></a></div>
+    </article>
+  </div>
+</section>
+<section if.bind="auth.user" class="panel dashboard-rooms"><div class="section-heading"><div><h2>Encuentra tu próxima sala</h2><p>${auth.mode === 'mock' ? 'Tus salas locales de demostración.' : 'Vista de las salas al abrir esta página.'}</p></div><a href.bind="auth.mode === 'mock' ? '/lobby' : '/matches'" class="text-link">Ver salas →</a></div><p if.bind="busy" role="status">Consultando salas…</p><p if.bind="roomError" class="alert" role="status">${roomError}</p><div if.bind="!busy && !roomError && !rooms.length" class="empty-state"><h3>Aún no hay salas en la lista</h3><p>Prepara una y comienza tu próximo desafío.</p></div><ul class="dashboard-room-list"><li repeat.for="room of rooms.slice(0, 4)"><div><strong>${room.title}</strong><span>${room.gameType} · ${room.currentPlayers}/${room.maxPlayers} jugadores</span></div><a href.bind="auth.mode === 'mock' ? '/lobby' : '/matches'" class="text-link">Ver sala →</a></li></ul></section>
+</div>
+<aside if.bind="auth.user" class="dashboard-sidebar" aria-label="Tu próximo paso"><article class="panel"><span class="eyebrow">TU ACCESO</span><h2>Listo para el desafío</h2><p>Consulta tus permisos y los juegos habilitados para tu cuenta.</p><p if.bind="gameError" class="alert" role="status">${gameError}</p><a href="/profile" class="button button-block">Ver mi perfil →</a></article><article class="panel"><span class="feature-icon cyan" aria-hidden="true">♧</span><h2>De la sala a la arena</h2><ol class="steps-list"><li>Elige tu juego.</li><li>Crea una sala o únete.</li><li>Espera al anfitrión para iniciar.</li></ol><p>Los juegos de los otros equipos se abrirán cuando su integración esté disponible.</p></article><article class="panel"><span class="badge badge-muted">${auth.mode === 'mock' ? 'Modo prueba' : 'Cuenta conectada'}</span><h2>Tu espacio BattleHub</h2><p>${auth.mode === 'mock' ? 'Las salas y el demo se guardan en memoria durante esta sesión.' : 'El Shell reúne tu perfil, las salas y los juegos en un solo recorrido.'}</p></article></aside>
+</div>
+<section class="cta-panel"><span class="cta-symbol" aria-hidden="true">✦</span><h2>Tu próxima partida te espera</h2><p>Consulta tus juegos habilitados, prepara una sala y comparte el desafío.</p><div class="action-row"><a class="button" href.bind="auth.user ? '/catalog' : '/login'">${auth.user ? 'Explorar juegos' : 'Iniciar sesión'}</a><a class="button button-secondary" href.bind="auth.mode === 'mock' ? '/lobby' : '/matches'">Ver salas</a></div></section>

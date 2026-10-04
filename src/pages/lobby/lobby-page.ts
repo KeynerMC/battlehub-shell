@@ -10,7 +10,10 @@ export class LobbyPage {
   public busy = false;
   public error = '';
 
-  public canLoad(): boolean | string { return this.auth.user ? true : 'login'; }
+  public canLoad(): boolean | string {
+    if (this.auth.mode === 'auth0') return 'catalog';
+    return this.auth.user ? true : 'login';
+  }
   public loading(): Promise<void> { return this.refresh(); }
   public isMember(room: LobbyRoom): boolean {
     return room.participants.some(player => player.id === this.auth.user?.id);

@@ -4,7 +4,13 @@ import type { ProfileService } from './profile-service';
 import type { CatalogGame, UserProfile } from './profile-models';
 
 export class MockProfileService implements ProfileService {
+  public readonly status = 'ready' as const;
+  public readonly error = '';
   private readonly auth = resolve(IAuthService);
+
+  public async sync(): Promise<void> { await this.getProfile(); }
+  public reset(): void { /* El mock lee el usuario actual, sin caché. */ }
+  public async getPermissions(): Promise<string[]> { await this.getProfile(); return []; }
 
   public async getProfile(): Promise<UserProfile> {
     const user = this.auth.user;

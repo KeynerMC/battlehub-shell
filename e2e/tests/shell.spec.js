@@ -6,7 +6,7 @@ async function signIn(page) {
   await expect(page.getByRole('heading', { name: 'Sesión de prueba' })).toBeVisible();
   await page.getByLabel('Nombre para el demo').fill('Ana E2E');
   await page.getByRole('button', { name: 'Entrar en modo prueba' }).click();
-  await expect(page.getByRole('heading', { name: 'Bienvenido a BattleHub' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Bienvenido de nuevo, Ana E2E' })).toBeVisible();
 }
 
 test('sesión, perfil, catálogo, sala, juego y salida', async ({ page }) => {
@@ -43,6 +43,7 @@ test('sesión, perfil, catálogo, sala, juego y salida', async ({ page }) => {
   await expect(page.locator('.demo-game')).toHaveCount(0);
   await room.getByRole('button', { name: 'Salir de la sala' }).click();
   await expect(room).toHaveCount(0);
+  await page.getByRole('button', { name: 'Opciones de sesión' }).click();
   await page.getByRole('link', { name: 'Sesión de prueba', exact: true }).click();
   await page.getByRole('button', { name: 'Cerrar sesión de prueba' }).click();
   await page.getByRole('link', { name: 'Salas', exact: true }).click();

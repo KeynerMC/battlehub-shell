@@ -86,6 +86,8 @@ module.exports = function(env, { analyze }) {
       new HtmlWebpackPlugin({ template: 'index.html', favicon: 'favicon.ico' }),
       new Dotenv({
         path: `./.env${production ? '' :  '.' + (process.env.NODE_ENV || 'development')}`,
+        defaults: './.env.example',
+        systemvars: true,
       }),
       analyze && new BundleAnalyzerPlugin()
     ].filter(p => p)

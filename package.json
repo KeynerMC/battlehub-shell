@@ -13,6 +13,8 @@
   },
   "dependencies": {
     "@aurelia/router": "2.0.0-rc.2",
+    "@auth0/auth0-spa-js": "2.28.1",
+    "@microsoft/signalr": "10.0.0",
     "aurelia": "2.0.0-rc.2"
   },
   "devDependencies": {

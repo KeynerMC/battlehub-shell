@@ -1,18 +1,30 @@
-<section>
-  <h1>Catálogo de juegos</h1>
-  <p>Catálogo simulado: no representa permisos reales. Por ahora solo está integrada la demostración.</p>
-  <p if.bind="busy" role="status">Cargando juegos…</p>
-  <div if.bind="error" role="alert">
-    <p>${error}</p>
-    <button click.trigger="loading()" disabled.bind="busy">Reintentar</button>
+<section aria-labelledby="catalog-title">
+  <div class="page-heading"><div><span class="eyebrow">ELIGE TU PRÓXIMO DESAFÍO</span><h1 id="catalog-title">Explora nuestros <span class="accent-text">juegos</span></h1><p>Escritura, preguntas y memoria. Encuentra el desafío que va contigo.</p></div></div>
+  <p if.bind="auth.mode === 'mock'" class="alert">Catálogo simulado: no representa permisos reales. Por ahora solo está integrada la demostración.</p>
+  <p else class="muted">Este catálogo muestra los juegos habilitados para tu cuenta. Crea o busca una partida en <a href="/matches">Salas</a>.</p>
+  <div class="toolbar"><label class="search-field"><span aria-hidden="true">⌕</span><input aria-label="Buscar juego" placeholder="Buscar juego…" value.bind="query" type="search"></label><label class="filter-field">Integración <select value.bind="availability"><option value="all">Todos los estados</option><option value="registered">Remote registrado</option><option value="pending">Pendiente</option></select></label></div>
+  <div class="category-tabs" role="group" aria-label="Filtrar juegos">
+    <button class="button-quiet ${category === 'all' ? 'selected' : ''}" aria-pressed.bind="category === 'all'" click.trigger="category = 'all'">Todos</button>
+    <button class="button-quiet ${category === 'typing' ? 'selected' : ''}" aria-pressed.bind="category === 'typing'" click.trigger="category = 'typing'">Velocidad</button>
+    <button class="button-quiet ${category === 'trivia' ? 'selected' : ''}" aria-pressed.bind="category === 'trivia'" click.trigger="category = 'trivia'">Trivia</button>
+    <button class="button-quiet ${category === 'memory' ? 'selected' : ''}" aria-pressed.bind="category === 'memory'" click.trigger="category = 'memory'">Memoria</button>
+    <span class="result-count">${filteredGames.length} de ${games.length} juegos</span>
   </div>
-  <p if.bind="!busy && !error && games.length === 0">No tienes juegos disponibles.</p>
+  <div if.bind="busy" class="skeleton-grid" role="status" aria-label="Cargando juegos"><div class="skeleton-card"></div><div class="skeleton-card"></div><div class="skeleton-card"></div></div>
+  <div if.bind="error" class="alert alert-error" role="alert"><p>${error}</p><button click.trigger="loading()" disabled.bind="busy">Reintentar</button></div>
+  <div if.bind="remoteError" class="alert" role="status"><p>${remoteError}</p><button click.trigger="loading()" disabled.bind="busy">Reintentar integración</button></div>
+  <div if.bind="!busy && !error && !filteredGames.length" class="empty-state"><span aria-hidden="true">◇</span><h2>${games.length ? 'No encontramos ese juego' : 'Aún no tienes juegos habilitados'}</h2><p>${games.length ? 'Prueba otro nombre o cambia los filtros.' : 'Consulta los permisos de tu perfil o vuelve a intentarlo más tarde.'}</p></div>
   <div class="catalog-grid">
-    <article class="catalog-card" repeat.for="game of games">
-      <h2>${game.name}</h2>
-      <p>${game.description}</p>
-      <a if.bind="game.gameType === playableGameType" class="home-action" href="/play">Probar demo</a>
-      <p else>Integración pendiente</p>
+    <article class="catalog-card" repeat.for="game of filteredGames">
+      <div class="game-art ${artwork(game.gameType)}" aria-hidden="true"></div>
+      <div class="game-card-body"><span class="eyebrow">${presentation(game.gameType).category}</span><h2>${game.name}</h2><p>${presentation(game.gameType).description}</p>
+        <span if.bind="isRegistered(game.gameType)" class="badge badge-success">${game.gameType === 'demo' ? 'Demo disponible' : 'Remote registrado'}</span>
+        <span else class="badge badge-muted">Integración pendiente</span>
+        <a if.bind="auth.mode === 'mock' && game.gameType === playableGameType" class="button button-block" href="/play">▷ Probar demo</a>
+        <a if.bind="auth.mode === 'auth0'" class="button button-block" href="/matches">Ver salas <span aria-hidden="true">→</span></a>
+        <button if.bind="auth.mode === 'mock' && game.gameType !== playableGameType" class="button button-block" disabled>Juego pendiente</button>
+      </div>
     </article>
   </div>
+  <div class="info-grid"><article class="panel"><h2>Una arena, distintos desafíos</h2><p>Cada juego se abre dentro de BattleHub. Mantienes la misma navegación y puedes volver a tus salas.</p></article><article class="panel"><h2>Tu acceso a los juegos</h2><p>Los juegos habilitados dependen de tus permisos. Un juego puede estar en tu catálogo y todavía esperar su integración.</p><a class="text-link" href="/profile">Consultar mi perfil →</a></article></div>
 </section>
