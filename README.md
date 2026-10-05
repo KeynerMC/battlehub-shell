@@ -169,5 +169,9 @@ La nueva ruta es `/matches`; requiere `MATCHMAKING_SERVICE_URL`, MongoDB y ambos
 
 La [integración local con Typing](docs/typing-integration.md) registra su remote en 4001, entrega tokens de usuario para su propia audiencia y conserva la vista de resultados al finalizar. El demo usa ahora 4004. La URL desplegada de Typing está pendiente.
 
+La [integración local de Trivia](docs/trivia-integration.md) registra el remote en 4002, usa `AUTH0_TRIVIA_AUDIENCE` y entrega tokens separados para jugar y validar la sala. La copia de Trivia tiene API/hub, pantalla multijugador, resultados y cola de finalización preparados. Quedan por confirmar el M2M, su mapa en Matchmaking y la prueba conjunta con Auth0 real; los cambios siguen locales.
+
+La [preparación de Memory](docs/memory-integration.md) registra el remote en 4003, añade `AUTH0_MEMORY_AUDIENCE`, autorización y proveedores de tokens, y limita esta versión a dos jugadores. La copia del Equipo 6 todavía necesita usar esos proveedores, autenticar su API/hub, validar la sala y avisar a Matchmaking. La guía detalla las rutas de sus pendientes y la configuración de Auth0.
+
 - Commits en formato semántico (`feat:`, `fix:`, `docs:`, `test:`, `chore:`, `ci:`...).
 - `main` protegida: todo cambio entra por Pull Request con CI en verde y al menos 1 aprobación.

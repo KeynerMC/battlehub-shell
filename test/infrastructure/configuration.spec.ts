@@ -18,4 +18,13 @@ describe('Configuración del Shell', () => {
     }
     expect(() => readConfiguration({ ...real, AUTH0_DOMAIN: 'https://tenant.auth0.com' })).toThrow();
   });
+  it('lee audiencias independientes y permite que un juego siga sin configurar', () => {
+    const config = readConfiguration({ ...real, AUTH0_TYPING_AUDIENCE: ' typing-api ', AUTH0_TRIVIA_AUDIENCE: ' trivia-api ', AUTH0_MEMORY_AUDIENCE: ' memory-api ' });
+    expect(config.typingAudience).toBe('typing-api');
+    expect(config.triviaAudience).toBe('trivia-api');
+    expect(config.memoryAudience).toBe('memory-api');
+    expect(config.audience).toBe('test-api');
+    expect(readConfiguration(real).triviaAudience).toBeUndefined();
+    expect(readConfiguration(real).memoryAudience).toBeUndefined();
+  });
 });

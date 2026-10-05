@@ -3,8 +3,9 @@ export interface GameContext {
   matchId: string;
   gameType: 'typing' | 'trivia' | 'memory' | string;
   currentUser: { id: string; displayName: string };
-  // Extensión local acordada para Typing; no modifica el contrato central.
+  // Extensión local de autorización para juegos; no modifica el contrato central.
   getAccessToken?: () => Promise<string>;
+  getMatchmakingAccessToken?: () => Promise<string>;
 }
 
 export interface GameModule {

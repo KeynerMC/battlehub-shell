@@ -26,6 +26,9 @@ export class MatchesPage {
   public gameMessage = '';
   public pendingGame?: RemoteRoom;
   public authorizingGame = false;
+  public get pendingGameName(): string {
+    return this.pendingGame?.gameType === 'memory' ? 'Memory' : this.pendingGame?.gameType === 'trivia' ? 'Trivia' : 'Typing';
+  }
   public gameFinished = false;
   public query = '';
   public filterGame = '';
@@ -125,7 +128,7 @@ export class MatchesPage {
     }
   }
   public create(): Promise<void> {
-    return this.run(async () => { await this.service.create(this.title, this.gameType, Number(this.maxPlayers)); this.title = ''; this.showCreate = false; });
+    return this.run(async () => { await this.service.create(this.title, this.gameType, this.gameType === 'memory' ? 2 : Number(this.maxPlayers)); this.title = ''; this.showCreate = false; });
   }
   public act(room: RemoteRoom, action: 'join' | 'leave' | 'start' | 'cancel'): Promise<void> {
     return this.run(async () => { await this.service.action(room.id, action); });
@@ -148,16 +151,17 @@ export class MatchesPage {
     this.entering = room.id;
     this.gameMessage = '';
     try {
+      if (room.gameType === 'memory' && room.participants.length !== 2) throw new Error('Esta versión de Memory necesita exactamente dos participantes.');
       const remotes = await loadRemotesConfig();
       if (!this.active || !this.auth.user) return;
       if (!remotes[room.gameType]) {
         this.gameMessage = `La partida comenzó. El equipo de ${room.gameType} todavía no tiene un remote configurado.`;
         return;
       }
-      if (room.gameType === 'typing') {
+      if (['typing', 'trivia', 'memory'].includes(room.gameType)) {
         this.pendingGame = room;
-        if (!this.auth.getGameAccessToken) throw new Error('El Shell no dispone de autorización para Typing.');
-        await this.auth.getGameAccessToken('typing');
+        if (!this.auth.getGameAccessToken) throw new Error(`El Shell no dispone de autorización para ${this.pendingGameName}.`);
+        await this.auth.getGameAccessToken(room.gameType);
       }
       await this.mountGame(room);
     } catch (error) { if (this.active) this.gameMessage = this.message(error); }
@@ -166,7 +170,8 @@ export class MatchesPage {
     const user = this.auth.user;
     const current = await this.service.get(room.id);
     if (!this.active || !user || this.auth.user !== user || this.context) return;
-    if (current.status !== 'Started' || !this.isMember(current) || current.gameType !== room.gameType) {
+    if (current.status !== 'Started' || !this.isMember(current) || current.gameType !== room.gameType
+      || (current.gameType === 'memory' && current.participants.length !== 2)) {
       this.pendingGame = undefined;
       throw new Error('La partida cambió. Actualiza las salas antes de abrir el juego.');
     }
@@ -174,9 +179,15 @@ export class MatchesPage {
     this.gameMessage = '';
     this.gameFinished = false;
     const context: GameContext = { matchId: current.id, gameType: current.gameType, currentUser: { id: user.id, displayName: user.displayName },
-      ...(current.gameType === 'typing' ? { getAccessToken: async () => {
+      ...(['typing', 'trivia', 'memory'].includes(current.gameType) ? { getAccessToken: async () => {
         if (!this.active || this.auth.user !== user || this.context !== context) throw new Error('La sesión cambió o el juego se cerró.');
-        const token = await this.auth.getGameAccessToken!('typing');
+        const token = await this.auth.getGameAccessToken!(current.gameType);
+        if (!this.active || this.auth.user !== user || this.context !== context) throw new Error('La sesión cambió o el juego se cerró.');
+        return token;
+      } } : {}),
+      ...(['trivia', 'memory'].includes(current.gameType) ? { getMatchmakingAccessToken: async () => {
+        if (!this.active || this.auth.user !== user || this.context !== context) throw new Error('La sesión cambió o el juego se cerró.');
+        const token = await this.auth.getAccessToken();
         if (!this.active || this.auth.user !== user || this.context !== context) throw new Error('La sesión cambió o el juego se cerró.');
         return token;
       } } : {}) };
