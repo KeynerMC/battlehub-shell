@@ -16,7 +16,7 @@ El Shell carga el frontend del juego mediante Module Federation. Después, el ju
 
 Los nombres y puertos son los de la plantilla ADR-003. Si usan otros, deben informarlos para registrar los valores reales. El puerto de la API es independiente del puerto del frontend.
 
-La copia local registra Typing en el puerto 4001 y el demo en el puerto 4004, para que puedan ejecutarse juntos. Tener un registro en el catálogo de Profile no significa que el remote ya esté disponible.
+La copia local registra Typing en el puerto 4001, Trivia en el 4002, Memory en el 4003 y el demo en el 4004. Tener un registro en el catálogo de Profile no confirma una integración completa. Consulta las guías de [Trivia](trivia-integration.md) y [Memory](memory-integration.md) para distinguir el código preparado de la configuración y prueba conjunta pendientes.
 
 ## 2. Preparar el frontend del juego
 
@@ -73,7 +73,7 @@ interface GameModule {
 
 Si falla la preparación o el arranque, rechazar la promesa para que el Shell muestre el error. Usar el `matchId` recibido; no generar otro identificador para representar la sala.
 
-El contrato central conserva los tres campos anteriores. Para Typing, esta copia local añade una extensión opcional `getAccessToken(): Promise<string>`, compatible con la extensión del Equipo 4. El juego la llama para obtener un token de usuario destinado a su API; no recibe credenciales M2M ni Client Secret. `currentUser.id` conserva exactamente el `sub` de Auth0. Esta extensión requiere coordinación con el profesor y no se presenta como una decisión aprobada del contrato. La audiencia compartida propuesta en ADR-007 solo contempla Profile y Matchmaking. Consulta [la integración local de Typing](typing-integration.md) para la configuración de las dos audiencias.
+El contrato central conserva los tres campos anteriores. Para Typing, Trivia y Memory, esta copia local añade `getAccessToken(): Promise<string>` para obtener tokens de su propia audiencia. Para Trivia y Memory añade `getMatchmakingAccessToken(): Promise<string>` para que su backend valide participantes con la audiencia Profile/Matchmaking. Los juegos no reciben credenciales M2M ni Client Secret; `currentUser.id` conserva exactamente el `sub` de Auth0. Son extensiones locales propuestas que requieren coordinación con el profesor. La audiencia compartida propuesta en ADR-007 solo contempla Profile y Matchmaking. Consulta las guías de [Typing](typing-integration.md), [Trivia](trivia-integration.md) y [Memory](memory-integration.md).
 
 ## 4. Qué cambia el Equipo 3 en el Shell
 

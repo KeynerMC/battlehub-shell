@@ -9,7 +9,8 @@ export class Auth0AuthService implements AuthService {
   public user: SessionUser | null = null;
   public error = '';
 
-  public constructor(private readonly client: Auth0Sdk, private readonly origin: string, private readonly typingAudience?: string) {}
+  public constructor(private readonly client: Auth0Sdk, private readonly origin: string,
+    private readonly typingAudience?: string, private readonly triviaAudience?: string, private readonly memoryAudience?: string) {}
 
   public static create(config: ShellConfiguration): Auth0AuthService {
     const origin = window.location.origin;
@@ -24,7 +25,7 @@ export class Auth0AuthService implements AuthService {
       cacheLocation: 'memory',
       httpTimeoutInSeconds: 15,
       authorizeTimeoutInSeconds: 15,
-    }), origin, config.typingAudience);
+    }), origin, config.typingAudience, config.triviaAudience, config.memoryAudience);
   }
 
   public async initialize(): Promise<void> {
@@ -79,12 +80,14 @@ export class Auth0AuthService implements AuthService {
   }
 
   public async getGameAccessToken(gameType: string, interactive = false): Promise<string> {
-    if (gameType !== 'typing' || !this.typingAudience) {
-      throw new Error('Falta configurar la audiencia del juego en el Shell. Para Typing, configura AUTH0_TYPING_AUDIENCE y reinicia.');
-    }
+    const game = gameType === 'typing' ? { name: 'Typing', audience: this.typingAudience, variable: 'AUTH0_TYPING_AUDIENCE' }
+      : gameType === 'trivia' ? { name: 'Trivia', audience: this.triviaAudience, variable: 'AUTH0_TRIVIA_AUDIENCE' }
+      : gameType === 'memory' ? { name: 'Memory', audience: this.memoryAudience, variable: 'AUTH0_MEMORY_AUDIENCE' } : undefined;
+    if (!game) throw new Error('El Shell no dispone de autorización para este juego.');
+    if (!game.audience) throw new Error(`Falta configurar ${game.variable} y reiniciar el Shell.`);
     const user = this.user;
     if (!user) throw new Error('Inicia sesión para jugar.');
-    const options = { authorizationParams: { audience: this.typingAudience, scope: 'openid profile email' } };
+    const options = { authorizationParams: { audience: game.audience, scope: 'openid profile email' } };
     try {
       const token = interactive
         ? await this.client.getTokenWithPopup(options)
@@ -99,7 +102,7 @@ export class Auth0AuthService implements AuthService {
       return token;
     } catch {
       if (this.user !== user) throw new Error('La sesión cambió. Vuelve a iniciar sesión antes de jugar.');
-      throw new Error('No se pudo autorizar Typing. Pulsa Autorizar Typing, permite la ventana de Auth0 y verifica la API del juego.');
+      throw new Error(`No se pudo autorizar ${game.name}. Pulsa Autorizar ${game.name}, permite la ventana de Auth0 y verifica la API del juego.`);
     }
   }
 

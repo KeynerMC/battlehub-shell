@@ -1,4 +1,6 @@
 {
   "demo": { "scope": "demoGame", "url": "http://localhost:4004/remoteEntry.js", "module": "./GameModule" },
-  "typing": { "scope": "typingGame", "url": "http://localhost:4001/remoteEntry.js", "module": "./GameModule" }
+  "typing": { "scope": "typingGame", "url": "http://localhost:4001/remoteEntry.js", "module": "./GameModule" },
+  "trivia": { "scope": "triviaGame", "url": "http://localhost:4002/remoteEntry.js", "module": "./GameModule" },
+  "memory": { "scope": "memoryGame", "url": "http://localhost:4003/remoteEntry.js", "module": "./GameModule" }
 }

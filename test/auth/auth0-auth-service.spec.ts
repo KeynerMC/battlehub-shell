@@ -11,7 +11,8 @@ describe('Adaptador Auth0', () => {
       getTokenWithPopup: jest.fn().mockResolvedValue('typing-token'),
       logout: jest.fn().mockResolvedValue(undefined),
     };
-    return { sdk, auth: new Auth0AuthService(sdk, window.location.origin, 'https://api.battlehub.local/typing') };
+    return { sdk, auth: new Auth0AuthService(sdk, window.location.origin,
+      'https://api.battlehub.local/typing', 'https://api.battlehub.local/trivia', 'https://api.battlehub.local/memory') };
   };
   afterEach(() => window.history.replaceState(null, '', '/'));
 
@@ -86,11 +87,51 @@ describe('Adaptador Auth0', () => {
     expect(sdk.getTokenSilently).not.toHaveBeenCalled();
   });
 
+  it('selecciona la audiencia de Trivia sin reutilizar la de Typing o Profile', async () => {
+    const { sdk, auth } = setup();
+    await auth.initialize();
+    await auth.getGameAccessToken('trivia');
+    expect(sdk.getTokenSilently).toHaveBeenLastCalledWith({ authorizationParams: {
+      audience: 'https://api.battlehub.local/trivia', scope: 'openid profile email',
+    } });
+    sdk.getTokenSilently.mockRejectedValue({ error: 'consent_required' });
+    await expect(auth.getGameAccessToken('trivia')).rejects.toThrow('Autorizar Trivia');
+    expect(auth.user?.id).toBe('auth0|1');
+    await auth.getGameAccessToken('trivia', true);
+    expect(sdk.getTokenWithPopup).toHaveBeenCalledWith({ authorizationParams: {
+      audience: 'https://api.battlehub.local/trivia', scope: 'openid profile email',
+    } });
+  });
+
+  it('rechaza Trivia sin audiencia y juegos desconocidos antes de solicitar tokens', async () => {
+    const { sdk } = setup();
+    const auth = new Auth0AuthService(sdk, window.location.origin, 'typing-api');
+    await auth.initialize();
+    await expect(auth.getGameAccessToken('trivia')).rejects.toThrow('AUTH0_TRIVIA_AUDIENCE');
+    await expect(auth.getGameAccessToken('memory')).rejects.toThrow('AUTH0_MEMORY_AUDIENCE');
+    await expect(auth.getGameAccessToken('unknown')).rejects.toThrow('este juego');
+    expect(sdk.getTokenSilently).not.toHaveBeenCalled();
+    expect(sdk.getTokenWithPopup).not.toHaveBeenCalled();
+  });
+
   it('cierra la sesión con retorno al origen del Shell', async () => {
     const { sdk, auth } = setup();
     await auth.initialize();
     await auth.signOut();
     expect(sdk.logout).toHaveBeenCalledWith({ logoutParams: { returnTo: window.location.origin } });
     expect(auth.user).toBeNull();
+  });
+  it('usa la audiencia Memory y solicita consentimiento sin cambiar la cuenta', async () => {
+    const { sdk, auth } = setup();
+    await auth.initialize();
+    await auth.getGameAccessToken('memory');
+    const options = { authorizationParams: { audience: 'https://api.battlehub.local/memory', scope: 'openid profile email' } };
+    expect(sdk.getTokenSilently).toHaveBeenLastCalledWith(options);
+    sdk.getTokenSilently.mockRejectedValue({ error: 'consent_required' });
+    await expect(auth.getGameAccessToken('memory')).rejects.toThrow('Autorizar Memory');
+    expect(auth.user?.id).toBe('auth0|1');
+    expect(sdk.getTokenWithPopup).not.toHaveBeenCalled();
+    await auth.getGameAccessToken('memory', true);
+    expect(sdk.getTokenWithPopup).toHaveBeenCalledWith(options);
   });
 });
