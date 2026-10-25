@@ -1,4 +1,4 @@
-import { resolve } from 'aurelia';
+import { resolve, watch } from 'aurelia';
 import { HubConnectionState, type HubConnection } from '@microsoft/signalr';
 import { IAuthService } from '../../auth/auth-service';
 import { IProfileService } from '../../profile/profile-service';
@@ -45,6 +45,7 @@ export class MatchesPage {
   private refreshing = false;
   private refreshAgain = false;
   private entering?: string;
+  private dismissedRoom?: string;
   public canLoad(): boolean | string { return this.auth.user ? this.auth.mode === 'auth0' ? true : 'lobby' : 'login'; }
   public async attached(): Promise<void> {
     this.active = true;
@@ -93,8 +94,9 @@ export class MatchesPage {
     try {
       do {
         this.refreshAgain = false;
+        const user = this.auth.user;
         const rooms = await this.service.list();
-        if (!this.active) return;
+        if (!this.active || this.auth.user !== user) return;
         this.rooms = rooms;
         if (this.context && !this.gameFinished && !rooms.some(r => r.id === this.context?.matchId && r.status === 'Started' && this.isMember(r))) {
           try {
@@ -112,9 +114,14 @@ export class MatchesPage {
           this.gameMessage = '';
         }
         const started = rooms.find(r => r.status === 'Started' && this.isMember(r));
-        if (started && !this.context && this.entering !== started.id) await this.openGame(started);
+        if (started && started.id !== this.dismissedRoom && !this.context && this.entering !== started.id) await this.openGame(started);
       } while (this.refreshAgain && this.active);
-    } catch (error) { if (this.active) this.error = this.message(error); }
+    } catch (error) {
+      if (this.active) {
+        if (error instanceof MatchmakingError && [401, 403].includes(error.status)) await this.closeGame();
+        this.error = this.message(error);
+      }
+    }
     finally { this.refreshing = false; }
   }
   private async heartbeat(): Promise<void> {
@@ -144,13 +151,16 @@ export class MatchesPage {
     finally { this.busy = false; }
   }
   public async openGame(room: RemoteRoom): Promise<void> {
+    if (this.entering || !this.active) return;
+    const user = this.auth.user;
+    if (!user) return;
     if (room.status !== 'Started' || !this.isMember(room) || this.context) return;
     this.entering = room.id;
     this.gameMessage = '';
     try {
       if (room.gameType === 'memory' && room.participants.length !== 2) throw new Error('Esta versión de Memory necesita exactamente dos participantes.');
       const remotes = await loadRemotesConfig();
-      if (!this.active || !this.auth.user) return;
+      if (!this.active || this.auth.user !== user) return;
       if (!remotes[room.gameType]) {
         this.gameMessage = `La partida comenzó. El equipo de ${room.gameType} todavía no tiene un remote configurado.`;
         return;
@@ -160,8 +170,10 @@ export class MatchesPage {
         if (!this.auth.getGameAccessToken) throw new Error(`El Shell no dispone de autorización para ${room.gameType}.`);
         await this.auth.getGameAccessToken(room.gameType);
       }
+      if (!this.active || this.auth.user !== user) return;
       await this.mountGame(room);
-    } catch (error) { if (this.active) this.gameMessage = this.message(error); }
+    } catch (error) { if (this.active && this.auth.user === user) this.gameMessage = this.message(error); }
+    finally { this.entering = undefined; }
   }
   private async mountGame(room: RemoteRoom): Promise<void> {
     const user = this.auth.user;
@@ -192,14 +204,35 @@ export class MatchesPage {
     if (this.host) { this.host.context = this.context; await this.host.load(); }
   }
   private async closeGame(): Promise<void> {
-    await this.host?.exit();
-    this.onGameExit();
+    try { await this.host?.exit(); } finally { this.onGameExit(); }
   }
-  public onGameExit = () => { this.context = undefined; this.gameFinished = false; };
+  public onGameExit = () => {
+    this.dismissedRoom = this.context?.matchId ?? this.dismissedRoom;
+    this.context = undefined;
+    this.pendingGame = undefined;
+    this.gameFinished = false;
+  };
+
+  @watch((page: MatchesPage) => page.auth.user)
+  public sessionChanged(): void {
+    if (!this.active) return;
+    this.active = false;
+    clearInterval(this.timer);
+    this.rooms = [];
+    this.games = [];
+    this.canCreate = false;
+    this.context = undefined;
+    this.pendingGame = undefined;
+    void this.closeGame().catch(() => { this.error = 'No se pudo cerrar el juego anterior.'; });
+    void this.connection?.stop().catch(() => { this.connectionStatus = 'Desconectado'; });
+    this.error = 'La sesion cambio. Vuelve a entrar a las salas.';
+  }
   public async detaching(): Promise<void> {
     this.active = false;
     clearInterval(this.timer);
-    await this.connection?.stop();
+    this.context = undefined;
+    this.pendingGame = undefined;
+    try { await this.host?.exit(); } finally { await this.connection?.stop(); }
   }
   private message(error: unknown): string { return error instanceof Error ? error.message : 'No se pudo actualizar la sala.'; }
 }

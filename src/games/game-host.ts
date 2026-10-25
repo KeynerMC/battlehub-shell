@@ -20,15 +20,18 @@ export class GameHost {
 
   private readonly container = resolve(IContainer);
   private operation = 0;
+  private transitioning = false;
+  private readonly disposals = new WeakMap<GameModule, Promise<void>>();
 
   public async load(): Promise<void> {
-    if (this.status === 'loading' || this.component) return;
+    if (!this.context || this.status === 'loading' || this.component) return;
     const operation = ++this.operation;
+    const context = this.context;
     let instance: GameModule | null = null;
     this.error = null;
     this.status = 'loading';
     try {
-      const Ctor = await this.loadWithRetry(operation);
+      const Ctor = await this.loadWithRetry(operation, context.gameType);
       if (operation !== this.operation) return;
       instance = this.container.invoke(Ctor as never) as GameModule;
       for (const m of ['initialize', 'start', 'pause', 'dispose'] as const) {
@@ -37,8 +40,8 @@ export class GameHost {
         }
       }
       try {
-        await instance.initialize(this.context);
-        if (operation !== this.operation) { await instance.dispose(); return; }
+        await instance.initialize(context);
+        if (operation !== this.operation) { await this.disposeRemote(instance); return; }
         this.component = instance;
         await new Promise(r => setTimeout(r)); // esperar a que se renderice en el área del juego
         if (operation !== this.operation) return;
@@ -48,10 +51,13 @@ export class GameHost {
       }
       if (operation === this.operation) this.status = 'running';
     } catch (e) {
-      if (operation !== this.operation) return;
+      if (operation !== this.operation) {
+        if (instance) await this.disposeRemote(instance);
+        return;
+      }
       this.component = null;
       if (instance && typeof instance.dispose === 'function') {
-        try { await instance.dispose(); } catch (cleanupError) { console.error('[shell] limpieza del juego', cleanupError); }
+        await this.disposeRemote(instance);
       }
       if (operation !== this.operation) return;
       this.error = e instanceof GameLoadError ? e : new GameLoadError('REMOTE_UNREACHABLE', String(e), true);
@@ -60,20 +66,36 @@ export class GameHost {
     }
   }
 
-  public async pause(): Promise<void> {
-    if (this.component && this.status === 'running') {
-      const operation = this.operation;
-      await this.component.pause();
-      if (operation === this.operation) this.status = 'paused';
-    }
+  public pause(): Promise<void> { return this.transition('running', 'paused', 'pause'); }
+  public resume(): Promise<void> { return this.transition('paused', 'running', 'start'); }
+
+  private async transition(from: 'running' | 'paused', to: 'running' | 'paused', method: 'pause' | 'start'): Promise<void> {
+    if (!this.component || this.status !== from || this.transitioning) return;
+    const instance = this.component;
+    const operation = this.operation;
+    this.transitioning = true;
+    try {
+      await instance[method]();
+      if (operation === this.operation) this.status = to;
+    } catch {
+      if (operation !== this.operation) return;
+      this.component = null;
+      await this.disposeRemote(instance);
+      if (operation !== this.operation) return;
+      this.error = new GameLoadError('LIFECYCLE_ERROR', 'No se pudo cambiar el estado del juego. Vuelve a abrirlo desde las salas.', false);
+      this.status = 'error';
+    } finally { this.transitioning = false; }
   }
 
-  public async resume(): Promise<void> {
-    if (this.component && this.status === 'paused') {
-      const operation = this.operation;
-      await this.component.start();
-      if (operation === this.operation) this.status = 'running';
+  private disposeRemote(instance: GameModule): Promise<void> {
+    let pending = this.disposals.get(instance);
+    if (!pending) {
+      pending = Promise.resolve().then(() => instance.dispose()).catch(error => {
+        console.error('[shell] limpieza del juego', error);
+      });
+      this.disposals.set(instance, pending);
     }
+    return pending;
   }
 
   public async exit(): Promise<void> {
@@ -90,18 +112,19 @@ export class GameHost {
     this.component = null;
     this.status = 'idle';
     this.error = null;
-    if (component) await component.dispose();
+    this.attempt = 0;
+    if (component) await this.disposeRemote(component);
   }
 
-  private async loadWithRetry(operation: number): Promise<unknown> {
+  private async loadWithRetry(operation: number, gameType: string): Promise<unknown> {
     let lastError: GameLoadError | null = null;
     for (let i = 0; i <= AUTO_RETRY_DELAYS_MS.length; i++) {
       if (operation !== this.operation) throw new Error('Carga cancelada');
       this.attempt = i + 1;
       try {
-        const mod = await withTimeout(loadGameModule(this.context.gameType), LOAD_TIMEOUT_MS);
+        const mod = await withTimeout(loadGameModule(gameType), LOAD_TIMEOUT_MS);
         if (!mod) {
-          throw new GameLoadError('REMOTE_NOT_REGISTERED', `No hay remote configurado para gameType "${this.context.gameType}"`, false);
+          throw new GameLoadError('REMOTE_NOT_REGISTERED', `No hay remote configurado para gameType "${gameType}"`, false);
         }
         if (typeof mod.GameModule !== 'function') {
           throw new GameLoadError('INVALID_MODULE', 'El remote no exporta "GameModule"', false);

@@ -191,4 +191,57 @@ describe('Salas reales', () => {
     } finally { await page.detaching(); container.dispose(); }
   });
 
+  it('permite abrir otra vez tras un fallo y no reabre automaticamente al cerrar', async () => {
+    const { page, rooms, container, auth } = setup();
+    rooms[0].status = 'Started';
+    jest.mocked(loadRemotesConfig).mockResolvedValue({ typing: { scope: 'typingGame', url: 'http://localhost:4001/remoteEntry.js', module: './GameModule' } });
+    auth.getGameAccessToken.mockRejectedValueOnce(new Error('Sin red'));
+    try {
+      await page.attached();
+      expect(page.context).toBeUndefined();
+      await page.openGame(rooms[0]);
+      expect(page.context?.matchId).toBe('room');
+      page.onGameExit();
+      await page.refresh();
+      expect(page.context).toBeUndefined();
+      await page.openGame(rooms[0]);
+      expect(page.context?.matchId).toBe('room');
+    } finally { await page.detaching(); container.dispose(); }
+  });
+
+  it('cancela una apertura si cambia la cuenta y libera el host al navegar fuera', async () => {
+    const { page, rooms, container, auth } = setup();
+    const host = { exit: jest.fn().mockResolvedValue(undefined) };
+    page.host = host as unknown as GameHost;
+    try {
+      await page.attached();
+      let finish!: (token: string) => void;
+      auth.getGameAccessToken.mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
+      rooms[0].status = 'Started';
+      jest.mocked(loadRemotesConfig).mockResolvedValue({ typing: { scope: 'typingGame', url: 'http://localhost:4001/remoteEntry.js', module: './GameModule' } });
+      const opening = page.openGame(rooms[0]);
+      while (!finish) await Promise.resolve();
+      auth.user = { id: 'v', displayName: 'Luis' };
+      page.sessionChanged();
+      finish('token');
+      await opening;
+      expect(page.context).toBeUndefined();
+      expect(page.rooms).toEqual([]);
+      expect(host.exit).toHaveBeenCalled();
+    } finally { await page.detaching(); container.dispose(); }
+  });
+
+  it('observa el cierre de sesion en Aurelia sin esperar la siguiente actualizacion', async () => {
+    const { registrations, container, auth } = setup();
+    const Component = CustomElement.define({ name: 'session-watch-test', template }, MatchesPage);
+    const fixture = await createFixture('<session-watch-test></session-watch-test>', {}, [Component, GameHost, ...registrations]).started;
+    try {
+      expect(fixture.appHost.textContent).toContain('Sala de Ana');
+      auth.user = null!;
+      await new Promise(resolve => setTimeout(resolve, 0));
+      expect(fixture.appHost.textContent).not.toContain('Sala de Ana');
+      expect(fixture.appHost.textContent).toContain('Vuelve a entrar a las salas');
+    } finally { await fixture.stop(true); container.dispose(); }
+  });
+
 });
