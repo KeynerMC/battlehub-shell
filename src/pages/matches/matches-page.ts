@@ -25,10 +25,6 @@ export class MatchesPage {
   public context?: GameContext;
   public gameMessage = '';
   public pendingGame?: RemoteRoom;
-  public authorizingGame = false;
-  public get pendingGameName(): string {
-    return this.pendingGame?.gameType === 'memory' ? 'Memory' : this.pendingGame?.gameType === 'trivia' ? 'Trivia' : 'Typing';
-  }
   public gameFinished = false;
   public query = '';
   public filterGame = '';
@@ -160,7 +156,7 @@ export class MatchesPage {
       }
       if (['typing', 'trivia', 'memory'].includes(room.gameType)) {
         this.pendingGame = room;
-        if (!this.auth.getGameAccessToken) throw new Error(`El Shell no dispone de autorización para ${this.pendingGameName}.`);
+        if (!this.auth.getGameAccessToken) throw new Error(`El Shell no dispone de autorización para ${room.gameType}.`);
         await this.auth.getGameAccessToken(room.gameType);
       }
       await this.mountGame(room);
@@ -193,17 +189,6 @@ export class MatchesPage {
       } } : {}) };
     this.context = context;
     if (this.host) { this.host.context = this.context; await this.host.load(); }
-  }
-  public async authorizeGame(): Promise<void> {
-    const room = this.pendingGame;
-    if (!room || this.authorizingGame || !this.auth.getGameAccessToken) return;
-    this.authorizingGame = true;
-    try {
-      await this.auth.getGameAccessToken(room.gameType, true);
-      if (!this.active || this.pendingGame !== room || this.context) return;
-      await this.mountGame(room);
-    } catch (error) { if (this.active) this.gameMessage = this.message(error); }
-    finally { this.authorizingGame = false; }
   }
   private async closeGame(): Promise<void> {
     await this.host?.exit();

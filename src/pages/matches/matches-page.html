@@ -15,7 +15,6 @@
     </div></td></tr>
   </tbody></table><div if.bind="!filteredRooms.length" class="empty-state"><span aria-hidden="true">♧</span><h2>${rooms.length ? 'Sin coincidencias' : 'La próxima sala puede ser tuya'}</h2><p>${rooms.length ? 'Prueba otro nombre o cambia el juego.' : 'No hay salas en la lista. Actualiza o crea una para comenzar.'}</p></div></div>
   <p if.bind="gameMessage" class="alert" role="status">${gameMessage}</p>
-  <button if.bind="pendingGame" click.trigger="authorizeGame()" disabled.bind="authorizingGame">${authorizingGame ? 'Autorizando…' : 'Autorizar ' + pendingGameName}</button>
   <div if.bind="context" class="game-section-heading"><div><span class="eyebrow">${gameFinished ? 'PARTIDA FINALIZADA' : 'PARTIDA EN CURSO'}</span><h2>Tu área de juego</h2><p>Cerrar el juego libera esta vista; no finaliza la partida.</p></div><button class="button-secondary" click.trigger="host.exit()">Cerrar juego</button></div>
   <game-host component.ref="host" context.bind="context" on-exit.bind="onGameExit"></game-host>
   <p if.bind="context" class="desktop-game-notice alert">Para jugar, utiliza una ventana de escritorio de al menos 1366 × 768. Puedes desplazar el área del juego horizontalmente.</p>

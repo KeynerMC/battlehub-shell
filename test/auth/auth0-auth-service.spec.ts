@@ -11,8 +11,7 @@ describe('Adaptador Auth0', () => {
       getTokenWithPopup: jest.fn().mockResolvedValue('typing-token'),
       logout: jest.fn().mockResolvedValue(undefined),
     };
-    return { sdk, auth: new Auth0AuthService(sdk, window.location.origin,
-      'https://api.battlehub.local/typing', 'https://api.battlehub.local/trivia', 'https://api.battlehub.local/memory') };
+    return { sdk, auth: new Auth0AuthService(sdk, window.location.origin) };
   };
   afterEach(() => window.history.replaceState(null, '', '/'));
 
@@ -49,89 +48,44 @@ describe('Adaptador Auth0', () => {
     expect(sdk.loginWithRedirect).toHaveBeenCalledTimes(1);
   });
 
-  it('obtiene tokens separados para el juego sin cambiar el token de Profile', async () => {
+  it.each(['typing', 'trivia', 'memory'])('usa la sesión del Shell para %s sin otra autorización', async gameType => {
     const { sdk, auth } = setup();
     await auth.initialize();
-    await auth.getGameAccessToken('typing');
-    expect(sdk.getTokenSilently).toHaveBeenLastCalledWith({ authorizationParams: {
-      audience: 'https://api.battlehub.local/typing', scope: 'openid profile email',
-    } });
-    await auth.getAccessToken();
-    expect(sdk.getTokenSilently).toHaveBeenLastCalledWith();
-  });
-
-  it('conserva la sesión ante consentimiento pendiente y abre popup solo con acción explícita', async () => {
-    const { sdk, auth } = setup();
-    await auth.initialize();
-    const user = auth.user;
-    sdk.getTokenSilently.mockRejectedValue({ error: 'consent_required' });
-    await expect(auth.getGameAccessToken('typing')).rejects.toThrow('Autorizar Typing');
-    expect(auth.user).toBe(user);
+    expect(await auth.getGameAccessToken(gameType)).toBe('access-token');
+    expect(sdk.getTokenSilently).toHaveBeenCalledWith();
     expect(sdk.getTokenWithPopup).not.toHaveBeenCalled();
-    expect(await auth.getGameAccessToken('typing', true)).toBe('typing-token');
+    expect(sdk.loginWithRedirect).not.toHaveBeenCalled();
   });
 
-  it('rechaza el token del popup si el usuario elige otra cuenta', async () => {
+  it('rechaza un cambio de cuenta mientras obtiene el token', async () => {
     const { sdk, auth } = setup();
     await auth.initialize();
     sdk.getUser.mockResolvedValue({ sub: 'auth0|2', name: 'Otra persona' });
-    await expect(auth.getGameAccessToken('typing', true)).rejects.toThrow('sesión cambió');
+    await expect(auth.getGameAccessToken('typing')).rejects.toThrow('sesión cambió');
     expect(auth.user).toBeNull();
   });
 
-  it('no reemplaza la audiencia de un juego ausente con la audiencia de Profile', async () => {
-    const { sdk } = setup();
-    const auth = new Auth0AuthService(sdk, window.location.origin);
-    await auth.initialize();
-    await expect(auth.getGameAccessToken('typing')).rejects.toThrow('AUTH0_TYPING_AUDIENCE');
-    expect(sdk.getTokenSilently).not.toHaveBeenCalled();
-  });
-
-  it('selecciona la audiencia de Trivia sin reutilizar la de Typing o Profile', async () => {
+  it('requiere sesión y rechaza juegos desconocidos', async () => {
     const { sdk, auth } = setup();
-    await auth.initialize();
-    await auth.getGameAccessToken('trivia');
-    expect(sdk.getTokenSilently).toHaveBeenLastCalledWith({ authorizationParams: {
-      audience: 'https://api.battlehub.local/trivia', scope: 'openid profile email',
-    } });
-    sdk.getTokenSilently.mockRejectedValue({ error: 'consent_required' });
-    await expect(auth.getGameAccessToken('trivia')).rejects.toThrow('Autorizar Trivia');
-    expect(auth.user?.id).toBe('auth0|1');
-    await auth.getGameAccessToken('trivia', true);
-    expect(sdk.getTokenWithPopup).toHaveBeenCalledWith({ authorizationParams: {
-      audience: 'https://api.battlehub.local/trivia', scope: 'openid profile email',
-    } });
-  });
-
-  it('rechaza Trivia sin audiencia y juegos desconocidos antes de solicitar tokens', async () => {
-    const { sdk } = setup();
-    const auth = new Auth0AuthService(sdk, window.location.origin, 'typing-api');
-    await auth.initialize();
-    await expect(auth.getGameAccessToken('trivia')).rejects.toThrow('AUTH0_TRIVIA_AUDIENCE');
-    await expect(auth.getGameAccessToken('memory')).rejects.toThrow('AUTH0_MEMORY_AUDIENCE');
+    await expect(auth.getGameAccessToken('typing')).rejects.toThrow('Inicia sesión');
     await expect(auth.getGameAccessToken('unknown')).rejects.toThrow('este juego');
     expect(sdk.getTokenSilently).not.toHaveBeenCalled();
+  });
+
+  it('pide renovar la sesión vencida sin abrir autorización por juego', async () => {
+    const { sdk, auth } = setup();
+    await auth.initialize();
+    sdk.getTokenSilently.mockRejectedValue({ error: 'login_required' });
+    await expect(auth.getGameAccessToken('memory')).rejects.toThrow('renovarse');
+    expect(auth.user).toBeNull();
     expect(sdk.getTokenWithPopup).not.toHaveBeenCalled();
   });
 
-  it('cierra la sesión con retorno al origen del Shell', async () => {
+  it('cierra la sesión con retorno al Shell', async () => {
     const { sdk, auth } = setup();
     await auth.initialize();
     await auth.signOut();
     expect(sdk.logout).toHaveBeenCalledWith({ logoutParams: { returnTo: window.location.origin } });
     expect(auth.user).toBeNull();
-  });
-  it('usa la audiencia Memory y solicita consentimiento sin cambiar la cuenta', async () => {
-    const { sdk, auth } = setup();
-    await auth.initialize();
-    await auth.getGameAccessToken('memory');
-    const options = { authorizationParams: { audience: 'https://api.battlehub.local/memory', scope: 'openid profile email' } };
-    expect(sdk.getTokenSilently).toHaveBeenLastCalledWith(options);
-    sdk.getTokenSilently.mockRejectedValue({ error: 'consent_required' });
-    await expect(auth.getGameAccessToken('memory')).rejects.toThrow('Autorizar Memory');
-    expect(auth.user?.id).toBe('auth0|1');
-    expect(sdk.getTokenWithPopup).not.toHaveBeenCalled();
-    await auth.getGameAccessToken('memory', true);
-    expect(sdk.getTokenWithPopup).toHaveBeenCalledWith(options);
   });
 });
