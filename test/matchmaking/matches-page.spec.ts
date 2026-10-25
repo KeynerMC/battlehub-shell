@@ -118,20 +118,28 @@ describe('Salas reales', () => {
       expect(page.gameFinished).toBe(false);
     } finally { await page.detaching(); container.dispose(); }
   });
-  it('espera consentimiento y revalida la sala después del popup', async () => {
-    const { page, rooms, service, container, auth } = setup();
+  it('no ofrece otra autorizacion cuando falla el token de la sesion', async () => {
+    const { page, rooms, container, auth } = setup();
     rooms[0].status = 'Started';
     jest.mocked(loadRemotesConfig).mockResolvedValue({ typing: { scope: 'typingGame', url: 'http://localhost:4001/remoteEntry.js', module: './GameModule' } });
-    auth.getGameAccessToken.mockRejectedValueOnce(new Error('Autorizar Typing'));
+    auth.getGameAccessToken.mockRejectedValue(new Error('La sesion necesita renovarse.'));
     try {
       await page.attached();
-      expect(page.pendingGame?.id).toBe('room');
       expect(page.context).toBeUndefined();
-      service.get.mockResolvedValue({ ...rooms[0], status: 'Cancelled' });
-      await page.authorizeGame();
-      expect(auth.getGameAccessToken).toHaveBeenLastCalledWith('typing', true);
+      expect(page.gameMessage).toContain('renovarse');
+      expect(auth.getGameAccessToken).toHaveBeenCalledWith('typing');
+      expect(template).not.toContain('authorizeGame');
+    } finally { await page.detaching(); container.dispose(); }
+  });
+  it('no abre una sala que se cancelo mientras obtenia el token', async () => {
+    const { page, rooms, service, container } = setup();
+    rooms[0].status = 'Started';
+    jest.mocked(loadRemotesConfig).mockResolvedValue({ typing: { scope: 'typingGame', url: 'http://localhost:4001/remoteEntry.js', module: './GameModule' } });
+    service.get.mockResolvedValue({ ...rooms[0], status: 'Cancelled' });
+    try {
+      await page.attached();
       expect(page.context).toBeUndefined();
-      expect(page.gameMessage).toContain('partida cambió');
+      expect(page.gameMessage).toContain('partida cambi' + '\u00f3');
     } finally { await page.detaching(); container.dispose(); }
   });
   it('renderiza la plantilla Aurelia con participantes y controles', async () => {
@@ -142,23 +150,6 @@ describe('Salas reales', () => {
       expect(fixture.appHost.textContent).toContain('Sala de Ana');
       expect(fixture.appHost.textContent).toContain('Luis');
       expect(fixture.appHost.textContent).toContain('Iniciar partida');
-    } finally { await fixture.stop(true); container.dispose(); }
-  });
-  it.each(['trivia', 'memory'])('renderiza autorización de %s cuando falta consentimiento para esa audiencia', async gameType => {
-    const { registrations, container, rooms, auth } = setup();
-    rooms[0].gameType = gameType;
-    rooms[0].status = 'Started';
-    auth.getGameAccessToken.mockRejectedValue(new Error(`Autorizar ${gameType}`));
-    jest.mocked(loadRemotesConfig).mockResolvedValue({ [gameType]: {
-      scope: `${gameType}Game`, url: `http://localhost:${gameType === 'memory' ? 4003 : 4002}/remoteEntry.js`, module: './GameModule',
-    } });
-    const Component = CustomElement.define({ name: 'trivia-consent-test', template }, class extends MatchesPage {});
-    const fixture = await createFixture('<trivia-consent-test></trivia-consent-test>', {}, [Component, GameHost, ...registrations]).started;
-    try {
-      const buttons = Array.from(fixture.appHost.querySelectorAll('button')).map(button => button.textContent);
-      expect(buttons).toContain(gameType === 'memory' ? 'Autorizar Memory' : 'Autorizar Trivia');
-      expect(buttons).not.toContain('Autorizar Typing');
-      expect(auth.getGameAccessToken).toHaveBeenCalledWith(gameType);
     } finally { await fixture.stop(true); container.dispose(); }
   });
   it('crea Memory con dos plazas aunque quedó otra capacidad seleccionada', async () => {
