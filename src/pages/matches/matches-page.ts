@@ -49,12 +49,13 @@ export class MatchesPage {
   public async attached(): Promise<void> {
     this.active = true;
     try {
-      const permissions = await this.profiles.getPermissions();
+      const [permissions, games] = await Promise.all([
+        this.profiles.getPermissions(), this.profiles.getEnabledGames(),
+      ]);
       if (!this.active) return;
       this.canCreate = permissions.includes('matches.create');
-      // Permite probar las salas aunque el catálogo aún no tenga registros ni remotes.
-      this.games = [{ gameType: 'typing', name: 'Typing Battle' }, { gameType: 'trivia', name: 'Trivia Battle' },
-        { gameType: 'memory', name: 'Memory Match' }].filter(g => permissions.includes(`games.${g.gameType}.play`));
+      this.games = games.filter(game => ['typing', 'trivia', 'memory'].includes(game.gameType)
+        && permissions.includes(game.requiredPermission || `games.${game.gameType}.play`));
       this.gameType = this.games[0]?.gameType || '';
       await this.connect();
       await this.refresh();

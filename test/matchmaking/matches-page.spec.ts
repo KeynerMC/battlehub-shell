@@ -21,11 +21,12 @@ describe('Salas reales', () => {
     const service = { configured: true, connection: () => connection, list: jest.fn().mockResolvedValue(rooms),
       get: jest.fn().mockResolvedValue(rooms[0]), action: jest.fn().mockResolvedValue(rooms[0]), create: jest.fn().mockResolvedValue(rooms[0]) };
     const auth = { mode: 'auth0', user: { id: 'u', displayName: 'Ana' }, getGameAccessToken: jest.fn().mockResolvedValue('typing-token'), getAccessToken: jest.fn().mockResolvedValue('room-token') };
+    const profiles = { getPermissions: async () => ['matches.create', 'games.typing.play'],
+        getEnabledGames: async () => [{ gameType: 'typing', name: 'Typing Battle', requiredPermission: 'games.typing.play' }] };
     const registrations = [Registration.instance(IAuthService, auth),
-      Registration.instance(IProfileService, { getPermissions: async () => ['matches.create', 'games.typing.play'] }),
-      Registration.instance(IRemoteMatchmaking, service)];
+      Registration.instance(IProfileService, profiles), Registration.instance(IRemoteMatchmaking, service)];
     const container = DI.createContainer().register(...registrations);
-    return { page: container.invoke(MatchesPage), service, connection, rooms, registrations, container, auth };
+    return { page: container.invoke(MatchesPage), service, connection, rooms, registrations, container, auth, profiles };
   }
   it('carga permisos y salas; detiene heartbeat y conexión al navegar fuera', async () => {
     const { page, service, connection, container } = setup();
@@ -179,4 +180,15 @@ describe('Salas reales', () => {
       await page.attached(); expect(page.context).toBeUndefined(); expect(page.gameMessage).toContain('partida cambió');
     } finally { await page.detaching(); container.dispose(); }
   });
+  it('no ofrece crear partidas de juegos que Profile deshabilito', async () => {
+    const { page, container, profiles } = setup();
+    jest.spyOn(profiles, 'getEnabledGames').mockResolvedValue([]);
+    try {
+      await page.attached();
+      expect(page.canCreate).toBe(true);
+      expect(page.games).toEqual([]);
+      expect(page.gameType).toBe('');
+    } finally { await page.detaching(); container.dispose(); }
+  });
+
 });

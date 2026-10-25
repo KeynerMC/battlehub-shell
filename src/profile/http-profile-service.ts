@@ -13,6 +13,7 @@ export class HttpProfileService implements ProfileService {
   private session: SessionUser | null = null;
   private pending: Promise<void> | null = null;
   private generation = 0;
+  private expiresAt = 0;
 
   public constructor(private readonly auth: AuthService, private readonly origin: string) {}
 
@@ -20,6 +21,7 @@ export class HttpProfileService implements ProfileService {
     this.generation++;
     this.session = null;
     this.snapshot = null;
+    this.expiresAt = 0;
     this.pending = null;
     this.status = 'idle';
     this.error = '';
@@ -55,6 +57,7 @@ export class HttpProfileService implements ProfileService {
         ]);
         assertCurrent();
         this.snapshot = { profile, permissions, games };
+        this.expiresAt = Date.now() + 60_000;
         this.status = 'ready';
       } catch (error) {
         if (generation === this.generation) {
@@ -72,7 +75,7 @@ export class HttpProfileService implements ProfileService {
 
   private async read(): Promise<Snapshot> {
     if (!this.auth.user) { this.reset(); throw new Error('Inicia sesión para consultar tu perfil.'); }
-    if (!this.snapshot || this.session !== this.auth.user) await this.sync();
+    if (!this.snapshot || this.session !== this.auth.user || Date.now() >= this.expiresAt) await this.sync();
     if (!this.snapshot || this.session !== this.auth.user) throw new Error('La sesión cambió. Vuelve a cargar el perfil.');
     return this.snapshot;
   }

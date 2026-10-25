@@ -1,4 +1,5 @@
 <section aria-labelledby="catalog-title">
+  <button class="button-secondary" click.trigger="refresh()" disabled.bind="busy">Actualizar juegos</button>
   <div class="page-heading"><div><span class="eyebrow">ELIGE TU PRÓXIMO DESAFÍO</span><h1 id="catalog-title">Explora nuestros <span class="accent-text">juegos</span></h1><p>Escritura, preguntas y memoria. Encuentra el desafío que va contigo.</p></div></div>
   <p if.bind="auth.mode === 'mock'" class="alert">Catálogo simulado: no representa permisos reales. Por ahora solo está integrada la demostración.</p>
   <p else class="muted">Este catálogo muestra los juegos habilitados para tu cuenta. Crea o busca una partida en <a href="/matches">Salas</a>.</p>
@@ -11,8 +12,8 @@
     <span class="result-count">${filteredGames.length} de ${games.length} juegos</span>
   </div>
   <div if.bind="busy" class="skeleton-grid" role="status" aria-label="Cargando juegos"><div class="skeleton-card"></div><div class="skeleton-card"></div><div class="skeleton-card"></div></div>
-  <div if.bind="error" class="alert alert-error" role="alert"><p>${error}</p><button click.trigger="loading()" disabled.bind="busy">Reintentar</button></div>
-  <div if.bind="remoteError" class="alert" role="status"><p>${remoteError}</p><button click.trigger="loading()" disabled.bind="busy">Reintentar integración</button></div>
+  <div if.bind="error" class="alert alert-error" role="alert"><p>${error}</p><button click.trigger="refresh()" disabled.bind="busy">Reintentar</button></div>
+  <div if.bind="remoteError" class="alert" role="status"><p>${remoteError}</p><button click.trigger="refresh()" disabled.bind="busy">Reintentar integración</button></div>
   <div if.bind="!busy && !error && !filteredGames.length" class="empty-state"><span aria-hidden="true">◇</span><h2>${games.length ? 'No encontramos ese juego' : 'Aún no tienes juegos habilitados'}</h2><p>${games.length ? 'Prueba otro nombre o cambia los filtros.' : 'Consulta los permisos de tu perfil o vuelve a intentarlo más tarde.'}</p></div>
   <div class="catalog-grid">
     <article class="catalog-card" repeat.for="game of filteredGames">

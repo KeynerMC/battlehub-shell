@@ -77,4 +77,23 @@ describe('Profile Service HTTP (DTOs del Equipo 1)', () => {
     await expect(service.getEnabledGames()).rejects.toThrow('conectar');
     expect(service.status).toBe('error');
   });
+  it('vuelve a consultar permisos y juegos al vencer la cache', async () => {
+    const clock = jest.spyOn(Date, 'now').mockReturnValue(1000);
+    try {
+      await service.getPermissions();
+      expect(fetchMock).toHaveBeenCalledTimes(4);
+      await service.getProfile();
+      expect(fetchMock).toHaveBeenCalledTimes(4);
+      clock.mockReturnValue(61_000);
+      fetchMock.mockImplementation(async (url: string) => {
+        if (url.endsWith('/permissions')) return response({ permissions: [] });
+        if (url.endsWith('/games')) return response([]);
+        return response(profile);
+      });
+      expect(await service.getPermissions()).toEqual([]);
+      expect(await service.getEnabledGames()).toEqual([]);
+      expect(fetchMock).toHaveBeenCalledTimes(8);
+    } finally { clock.mockRestore(); }
+  });
+
 });

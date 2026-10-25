@@ -81,4 +81,20 @@ describe('Perfil y catálogo simulados', () => {
     expect(page.error).toBe('');
     container.dispose();
   });
+  it.each([ProfilePage, CatalogPage])('actualiza desde Profile y permite recuperar un fallo sin perder el login', async Page => {
+    const { auth, container, profiles } = setup();
+    await auth.signIn('Ana');
+    const page = container.invoke(Page);
+    const sync = jest.spyOn(profiles, 'sync').mockRejectedValueOnce(new Error('Profile no disponible'));
+    try {
+      await page.refresh();
+      expect(page.error).toBe('Profile no disponible');
+      expect(page.busy).toBe(false);
+      expect(auth.user?.displayName).toBe('Ana');
+      sync.mockRestore();
+      await page.refresh();
+      expect(page.error).toBe('');
+    } finally { sync.mockRestore(); container.dispose(); }
+  });
+
 });
