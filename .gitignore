@@ -42,3 +42,11 @@ yarn-error.log*
 # ===== Artefactos de pruebas/CI =====
 test-results/
 playwright-report/
+
+# Guias locales para coordinar con otros equipos
+docs/login-unico-juegos.md
+docs/login-unico-typing.md
+docs/login-unico-trivia.md
+docs/login-unico-memory.md
+docs/flujo-eventos-shell.md
+docs/integracion-profile-pendientes.md
