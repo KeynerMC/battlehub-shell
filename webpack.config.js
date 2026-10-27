@@ -82,7 +82,7 @@ module.exports = function(env, { analyze }) {
       new CopyPlugin({ patterns: [{
         from: `config/remotes.${env.target || (production ? 'production' : 'local')}.json`,
         to: 'remotes.config.json',
-      }] }),
+      }, { from: 'config/browser-config.js', to: 'shell-config.js' }] }),
       new HtmlWebpackPlugin({ template: 'index.html', favicon: 'favicon.ico' }),
       new Dotenv({
         path: `./.env${production ? '' :  '.' + (process.env.NODE_ENV || 'development')}`,
