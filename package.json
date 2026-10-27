@@ -56,7 +56,9 @@
     "start": "webpack serve",
     "build": "webpack --env production",
     "analyze": "webpack --env production --analyze",
-    "test": "jest"
+    "test": "jest",
+    "serve": "node deploy/server.mjs",
+    "test:server": "node --test deploy/server.test.mjs"
   },
   "jest": {
     "testMatch": [

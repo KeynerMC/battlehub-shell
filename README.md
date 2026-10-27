@@ -67,8 +67,10 @@ muestra el error después de los reintentos. Reinicia el remote y pulsa **Reinte
 Webpack publica ese archivo como `/remotes.config.json` y el cargador lo consulta al ejecutar.
 `tooling/mf-shared.js` mantiene las versiones compartidas con el demo.
 
-El build de producción selecciona `config/remotes.production.json`, cuya URL sigue siendo
-un ejemplo y debe reemplazarse antes de desplegar. Para compilar optimizado con el remote local:
+El build de produccion selecciona `config/remotes.production.json`, que empieza vacio.
+El servidor de produccion sirve los remotes definidos en `REMOTES_CONFIG_JSON` al arrancar,
+sin recompilar la imagen. No se publican direcciones de ejemplo como juegos disponibles.
+Para compilar optimizado con el remote local:
 
 ```powershell
 npm.cmd run build -- --env target=local
@@ -175,3 +177,52 @@ La [preparación de Memory](docs/memory-integration.md) registra el remote en 40
 
 - Commits en formato semántico (`feat:`, `fix:`, `docs:`, `test:`, `chore:`, `ci:`...).
 - `main` protegida: todo cambio entra por Pull Request con CI en verde y al menos 1 aprobación.
+
+## Ejecutar con Docker
+
+```bash
+docker compose up --build
+```
+
+Shell queda en `http://localhost:4000` en modo de prueba. Este Compose levanta solo Shell:
+Profile, Matchmaking, juegos y sus bases de datos se despliegan por separado. No hay una
+base de datos propia de Shell. Para detenerlo: `docker compose down`.
+
+La imagen tiene una etapa de compilacion y otra de ejecucion, con Node 24 y usuario no root.
+Sirve las rutas de la SPA, los recursos compilados y `GET /health`. En Railway escucha en
+`0.0.0.0` y usa `PORT`; `railway.json` configura Docker y la comprobacion de salud.
+
+### Configuracion publica al iniciar
+
+El servidor `deploy/server.mjs` toma estas variables cuando arranca:
+
+| Variable | Uso |
+| --- | --- |
+| `BATTLEHUB_AUTH_MODE` | `mock` para vista previa; `auth0` para login real |
+| `AUTH0_DOMAIN` | Hostname del tenant, sin https:// |
+| `AUTH0_CLIENT_ID` | Client ID publico de la SPA de Shell |
+| `AUTH0_AUDIENCE` | Identificador de la API usada por Shell |
+| `PROFILE_SERVICE_URL` | Origen publico HTTPS de Profile, sin /api/profiles |
+| `MATCHMAKING_SERVICE_URL` | Origen publico HTTPS de Matchmaking |
+| `REMOTES_CONFIG_JSON` | Objeto con scope, url HTTPS y module por juego; por defecto `{}` |
+
+En modo `auth0` se exigen todas las variables de acceso y ambos servicios. El contenedor
+rechaza URLs locales o de la red privada de Railway, porque las llama el navegador.
+Shell publicado requiere HTTPS; el proveedor de hosting puede terminar TLS delante del
+contenedor HTTP. Las variables se cargan antes de iniciar Aurelia mediante `/shell-config.js`.
+Cambiar variables requiere reiniciar o redesplegar el servicio; no reconstruir la imagen.
+No se pasa NODE_ENV desde ese archivo para eludir las comprobaciones de produccion.
+
+Todo lo servido en `/shell-config.js` y `/remotes.config.json` es publico. Nunca configurar
+ClientSecret, tokens M2M o conexiones de bases de datos en el frontend. El servidor solo
+publica una lista explicita de claves y no devuelve el resto de variables del proceso.
+Las URLs de remotes deben apuntar a juegos confiables que permitan cargar sus recursos
+con CORS y compartan las versiones de Aurelia del contrato.
+
+Para probar el servidor sin Docker: `npm run build` y `npm run serve` (puerto 8080 por defecto).
+Para comprobarlo: `npm run test:server`. Esta suite usa HTTP real en un puerto temporal y
+verifica rutas, configuracion, remotes y que no se publiquen secretos del entorno.
+
+El modo de prueba no anuncia una integracion completa. Los juegos y Matchmaking todavia
+deben coordinar su adaptacion al flujo por eventos antes de habilitar partidas reales.
+La salud de Shell no comprueba la disponibilidad de esos servicios externos.
