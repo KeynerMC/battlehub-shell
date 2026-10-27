@@ -49,4 +49,16 @@ describe('Matchmaking real', () => {
     const { auth } = setup();
     await expect(new RemoteMatchmakingService(auth as unknown as AuthService).list()).rejects.toThrow('MATCHMAKING_SERVICE_URL');
   });
+  it('notifica fin con el token del usuario, sin secreto ni resultados del navegador', async () => {
+    const { service, fetch } = setup();
+    fetch.mockResolvedValue({ ok: true, status: 204 });
+    await service.notifyFinished('room/1');
+    expect(fetch).toHaveBeenCalledWith('http://localhost:5211/api/matches/room%2F1/finish', expect.objectContaining({
+      method: 'POST', headers: { Authorization: 'Bearer test-token' },
+    }));
+    expect(fetch.mock.calls[0][1]).not.toHaveProperty('body');
+    fetch.mockResolvedValue({ ok: false, status: 403 });
+    await expect(service.notifyFinished('room/1')).rejects.toThrow('permiso');
+  });
+
 });

@@ -1,6 +1,7 @@
 import { createFixture } from '@aurelia/testing';
 import { customElement } from 'aurelia';
 import { GameHost } from '../../src/games/game-host';
+import { GAME_START, GAME_STARTED } from '../../src/games/game-events';
 import { loadGameModule } from '../../src/games/remote-registry';
 
 jest.mock('../../src/games/remote-registry', () => ({ loadGameModule: jest.fn() }));
@@ -191,6 +192,28 @@ describe('GameHost', () => {
       expect(initialize).not.toHaveBeenCalled();
       expect(host.component).toBeNull();
     } finally { jest.useRealTimers(); }
+  });
+
+  it('inicia por el canal de eventos sin duplicar start y confirma el arranque', async () => {
+    const start = jest.fn().mockResolvedValue(undefined);
+    class Remote {
+      initialize = jest.fn().mockResolvedValue(undefined);
+      start = start; pause = jest.fn(); dispose = jest.fn().mockResolvedValue(undefined);
+    }
+    jest.mocked(loadGameModule).mockResolvedValue({ GameModule: Remote });
+    const host = await createHost();
+    const events = new EventTarget();
+    const requested = jest.fn(); const started = jest.fn();
+    events.addEventListener(GAME_START, requested);
+    events.addEventListener(GAME_STARTED, started);
+    host.context = { ...context, events };
+    await host.load();
+    expect(requested).toHaveBeenCalledTimes(1);
+    expect(start).toHaveBeenCalledTimes(1);
+    expect(started).toHaveBeenCalledTimes(1);
+    expect((requested.mock.calls[0][0] as CustomEvent).detail).toEqual({ matchId: context.matchId, gameType: context.gameType });
+    events.dispatchEvent(new CustomEvent(GAME_START));
+    expect(start).toHaveBeenCalledTimes(1);
   });
 
 });

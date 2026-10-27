@@ -8,6 +8,7 @@ import template from '../../src/pages/matches/matches-page.html';
 import { CustomElement } from 'aurelia';
 import { loadRemotesConfig } from '../../src/games/remote-loader';
 import { GameHost } from '../../src/games/game-host';
+import { GAME_FINISHED } from '../../src/games/game-events';
 
 jest.mock('@microsoft/signalr', () => ({ HubConnectionState: { Connected: 'Connected', Disconnected: 'Disconnected' } }));
 jest.mock('../../src/games/remote-loader', () => ({ loadRemotesConfig: jest.fn().mockResolvedValue({}) }));
@@ -19,9 +20,9 @@ describe('Salas reales', () => {
     const rooms: RemoteRoom[] = [{ id: 'room', title: 'Sala de Ana', gameType: 'typing', createdBy: 'u', createdAt: '2026-10-02T00:00:00Z',
       currentPlayers: 2, maxPlayers: 2, status: 'Waiting', participants: [{ userId: 'u', displayName: 'Ana' }, { userId: 'v', displayName: 'Luis' }] }];
     const service = { configured: true, connection: () => connection, list: jest.fn().mockResolvedValue(rooms),
-      get: jest.fn().mockResolvedValue(rooms[0]), action: jest.fn().mockResolvedValue(rooms[0]), create: jest.fn().mockResolvedValue(rooms[0]) };
-    const auth = { mode: 'auth0', user: { id: 'u', displayName: 'Ana' }, getGameAccessToken: jest.fn().mockResolvedValue('typing-token'), getAccessToken: jest.fn().mockResolvedValue('room-token') };
-    const profiles = { getPermissions: async () => ['matches.create', 'games.typing.play'],
+      get: jest.fn().mockResolvedValue(rooms[0]), notifyFinished: jest.fn().mockResolvedValue(undefined), action: jest.fn().mockResolvedValue(rooms[0]), create: jest.fn().mockResolvedValue(rooms[0]) };
+    const auth = { mode: 'auth0', user: { id: 'u', displayName: 'Ana' }, getAccessToken: jest.fn().mockResolvedValue('room-token') };
+    const profiles = { getPermissions: async () => ['matches.create', 'games.typing.play', 'games.trivia.play', 'games.memory.play'],
         getEnabledGames: async () => [{ gameType: 'typing', name: 'Typing Battle', requiredPermission: 'games.typing.play' }] };
     const registrations = [Registration.instance(IAuthService, auth),
       Registration.instance(IProfileService, profiles), Registration.instance(IRemoteMatchmaking, service)];
@@ -66,31 +67,18 @@ describe('Salas reales', () => {
       expect(page.pendingCancel).toBeUndefined();
     } finally { await page.detaching(); container.dispose(); }
   });
-  it.each(['typing', 'trivia', 'memory'])('entrega a %s una función de tokens y el sub sin persistir el token en el contexto', async gameType => {
+  it.each(['typing', 'trivia', 'memory'])('inicia %s con identidad y eventos, sin entregar la sesion', async gameType => {
     const { page, rooms, container, auth } = setup();
-    rooms[0].status = 'Started';
-    rooms[0].gameType = gameType;
-    jest.mocked(loadRemotesConfig).mockResolvedValue({ [gameType]: { scope: `${gameType}Game`,
-      url: `http://localhost:${gameType === 'typing' ? 4001 : gameType === 'trivia' ? 4002 : 4003}/remoteEntry.js`, module: './GameModule' } });
+    rooms[0].status = 'Started'; rooms[0].gameType = gameType;
+    jest.mocked(loadRemotesConfig).mockResolvedValue({ [gameType]: { scope: `${gameType}Game`, url: 'http://localhost:4001/remoteEntry.js', module: './GameModule' } });
     try {
       await page.attached();
       expect(page.context?.currentUser.id).toBe('u');
-      expect(await page.context?.getAccessToken?.()).toBe('typing-token');
       expect(page.context?.gameType).toBe(gameType);
-      expect(auth.getGameAccessToken).toHaveBeenCalledWith(gameType);
-      expect(JSON.stringify(page.context)).not.toContain('typing-token');
-      const roomProvider = page.context!.getMatchmakingAccessToken;
-      if (['trivia', 'memory'].includes(gameType)) {
-        expect(await roomProvider!()).toBe('room-token');
-        expect(auth.getAccessToken).toHaveBeenCalledTimes(1);
-        expect(JSON.stringify(page.context)).not.toContain('room-token');
-      } else expect(roomProvider).toBeUndefined();
-      const provider = page.context!.getAccessToken!;
-      auth.user = { id: 'v', displayName: 'Luis' };
-      await expect(page.context!.getAccessToken!()).rejects.toThrow('sesión cambió');
-      if (roomProvider) await expect(roomProvider()).rejects.toThrow('sesión cambió');
-      page.onGameExit();
-      await expect(provider()).rejects.toThrow('juego se cerró');
+      expect(page.context?.events).toBeInstanceOf(EventTarget);
+      expect(page.context).not.toHaveProperty('getAccessToken');
+      expect(page.context).not.toHaveProperty('getMatchmakingAccessToken');
+      expect(auth.getAccessToken).not.toHaveBeenCalled();
     } finally { await page.detaching(); container.dispose(); }
   });
   it('conserva resultados cuando la sala finalizada deja de aparecer en la lista', async () => {
@@ -119,16 +107,15 @@ describe('Salas reales', () => {
       expect(page.gameFinished).toBe(false);
     } finally { await page.detaching(); container.dispose(); }
   });
-  it('no ofrece otra autorizacion cuando falla el token de la sesion', async () => {
-    const { page, rooms, container, auth } = setup();
+  it('rechaza un juego sin permiso sin pedir autorizacion adicional', async () => {
+    const { page, rooms, container, profiles } = setup();
     rooms[0].status = 'Started';
     jest.mocked(loadRemotesConfig).mockResolvedValue({ typing: { scope: 'typingGame', url: 'http://localhost:4001/remoteEntry.js', module: './GameModule' } });
-    auth.getGameAccessToken.mockRejectedValue(new Error('La sesion necesita renovarse.'));
+    jest.spyOn(profiles, 'getPermissions').mockResolvedValue([]);
     try {
       await page.attached();
       expect(page.context).toBeUndefined();
-      expect(page.gameMessage).toContain('renovarse');
-      expect(auth.getGameAccessToken).toHaveBeenCalledWith('typing');
+      expect(page.gameMessage).toContain('permiso');
       expect(template).not.toContain('authorizeGame');
     } finally { await page.detaching(); container.dispose(); }
   });
@@ -162,13 +149,13 @@ describe('Salas reales', () => {
     } finally { await page.detaching(); container.dispose(); }
   });
   it('rechaza abrir Memory con más de dos participantes antes de autorizar', async () => {
-    const { page, rooms, auth, container } = setup();
+    const { page, rooms, container } = setup();
     rooms[0].gameType = 'memory'; rooms[0].status = 'Started';
     rooms[0].participants.push({ userId: 'third', displayName: 'Tercero' });
     try {
       await page.attached();
       expect(page.gameMessage).toContain('exactamente dos');
-      expect(page.context).toBeUndefined(); expect(auth.getGameAccessToken).not.toHaveBeenCalled();
+      expect(page.context).toBeUndefined();
     } finally { await page.detaching(); container.dispose(); }
   });
   it('revalida los participantes de Memory después de autorizar', async () => {
@@ -192,10 +179,10 @@ describe('Salas reales', () => {
   });
 
   it('permite abrir otra vez tras un fallo y no reabre automaticamente al cerrar', async () => {
-    const { page, rooms, container, auth } = setup();
+    const { page, rooms, container, profiles } = setup();
     rooms[0].status = 'Started';
     jest.mocked(loadRemotesConfig).mockResolvedValue({ typing: { scope: 'typingGame', url: 'http://localhost:4001/remoteEntry.js', module: './GameModule' } });
-    auth.getGameAccessToken.mockRejectedValueOnce(new Error('Sin red'));
+    jest.spyOn(profiles, 'getPermissions').mockResolvedValueOnce(['games.typing.play']).mockRejectedValueOnce(new Error('Sin red'));
     try {
       await page.attached();
       expect(page.context).toBeUndefined();
@@ -210,20 +197,20 @@ describe('Salas reales', () => {
   });
 
   it('cancela una apertura si cambia la cuenta y libera el host al navegar fuera', async () => {
-    const { page, rooms, container, auth } = setup();
+    const { page, rooms, container, auth, profiles } = setup();
     const host = { exit: jest.fn().mockResolvedValue(undefined) };
     page.host = host as unknown as GameHost;
     try {
       await page.attached();
-      let finish!: (token: string) => void;
-      auth.getGameAccessToken.mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
+      let finish!: (permissions: string[]) => void;
+      jest.spyOn(profiles, 'getPermissions').mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
       rooms[0].status = 'Started';
       jest.mocked(loadRemotesConfig).mockResolvedValue({ typing: { scope: 'typingGame', url: 'http://localhost:4001/remoteEntry.js', module: './GameModule' } });
       const opening = page.openGame(rooms[0]);
       while (!finish) await Promise.resolve();
       auth.user = { id: 'v', displayName: 'Luis' };
       page.sessionChanged();
-      finish('token');
+      finish(['games.typing.play']);
       await opening;
       expect(page.context).toBeUndefined();
       expect(page.rooms).toEqual([]);
@@ -242,6 +229,47 @@ describe('Salas reales', () => {
       expect(fixture.appHost.textContent).not.toContain('Sala de Ana');
       expect(fixture.appHost.textContent).toContain('Vuelve a entrar a las salas');
     } finally { await fixture.stop(true); container.dispose(); }
+  });
+
+  it('notifica el fin desde Shell una sola vez y espera confirmacion del servidor', async () => {
+    const { page, rooms, container, service } = setup();
+    rooms[0].status = 'Started';
+    jest.mocked(loadRemotesConfig).mockResolvedValue({ typing: { scope: 'typingGame', url: 'http://localhost:4001/remoteEntry.js', module: './GameModule' } });
+    service.notifyFinished.mockImplementation(async () => { rooms[0].status = 'Finished'; });
+    try {
+      await page.attached();
+      const events = page.context!.events!;
+      const detail = { matchId: 'room', gameType: 'typing' };
+      events.dispatchEvent(new CustomEvent(GAME_FINISHED, { detail }));
+      events.dispatchEvent(new CustomEvent(GAME_FINISHED, { detail }));
+      await new Promise(resolve => setTimeout(resolve, 0));
+      expect(service.notifyFinished).toHaveBeenCalledTimes(1);
+      expect(page.gameFinished).toBe(true);
+      expect(page.finishPending).toBe(false);
+      page.onGameExit();
+      events.dispatchEvent(new CustomEvent(GAME_FINISHED, { detail }));
+      expect(service.notifyFinished).toHaveBeenCalledTimes(1);
+    } finally { await page.detaching(); container.dispose(); }
+  });
+
+  it('ignora eventos de otra partida y conserva pendiente un rechazo de Matchmaking', async () => {
+    const { page, rooms, container, service } = setup();
+    rooms[0].status = 'Started';
+    jest.mocked(loadRemotesConfig).mockResolvedValue({ typing: { scope: 'typingGame', url: 'http://localhost:4001/remoteEntry.js', module: './GameModule' } });
+    service.notifyFinished.mockRejectedValue(new Error('403'));
+    try {
+      await page.attached();
+      const events = page.context!.events!;
+      events.dispatchEvent(new CustomEvent(GAME_FINISHED, { detail: { matchId: 'other', gameType: 'typing' } }));
+      expect(service.notifyFinished).not.toHaveBeenCalled();
+      events.dispatchEvent(new CustomEvent(GAME_FINISHED, { detail: { matchId: 'room', gameType: 'typing' } }));
+      await new Promise(resolve => setTimeout(resolve, 0));
+      expect(page.gameFinished).toBe(false);
+      expect(page.finishPending).toBe(true);
+      expect(page.gameMessage).toContain('Matchmaking');
+      await page.notifyGameFinished();
+      expect(service.notifyFinished).toHaveBeenCalledTimes(2);
+    } finally { await page.detaching(); container.dispose(); }
   });
 
 });

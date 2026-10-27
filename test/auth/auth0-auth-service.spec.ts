@@ -48,37 +48,13 @@ describe('Adaptador Auth0', () => {
     expect(sdk.loginWithRedirect).toHaveBeenCalledTimes(1);
   });
 
-  it.each(['typing', 'trivia', 'memory'])('usa la sesión del Shell para %s sin otra autorización', async gameType => {
+  it('mantiene el acceso a Profile dentro del Shell sin crear autorizacion por juego', async () => {
     const { sdk, auth } = setup();
     await auth.initialize();
-    expect(await auth.getGameAccessToken(gameType)).toBe('access-token');
-    expect(sdk.getTokenSilently).toHaveBeenCalledWith();
+    expect(await auth.getAccessToken()).toBe('access-token');
     expect(sdk.getTokenWithPopup).not.toHaveBeenCalled();
     expect(sdk.loginWithRedirect).not.toHaveBeenCalled();
-  });
-
-  it('rechaza un cambio de cuenta mientras obtiene el token', async () => {
-    const { sdk, auth } = setup();
-    await auth.initialize();
-    sdk.getUser.mockResolvedValue({ sub: 'auth0|2', name: 'Otra persona' });
-    await expect(auth.getGameAccessToken('typing')).rejects.toThrow('sesión cambió');
-    expect(auth.user).toBeNull();
-  });
-
-  it('requiere sesión y rechaza juegos desconocidos', async () => {
-    const { sdk, auth } = setup();
-    await expect(auth.getGameAccessToken('typing')).rejects.toThrow('Inicia sesión');
-    await expect(auth.getGameAccessToken('unknown')).rejects.toThrow('este juego');
-    expect(sdk.getTokenSilently).not.toHaveBeenCalled();
-  });
-
-  it('pide renovar la sesión vencida sin abrir autorización por juego', async () => {
-    const { sdk, auth } = setup();
-    await auth.initialize();
-    sdk.getTokenSilently.mockRejectedValue({ error: 'login_required' });
-    await expect(auth.getGameAccessToken('memory')).rejects.toThrow('renovarse');
-    expect(auth.user).toBeNull();
-    expect(sdk.getTokenWithPopup).not.toHaveBeenCalled();
+    expect('getGameAccessToken' in auth).toBe(false);
   });
 
   it('cierra la sesión con retorno al Shell', async () => {

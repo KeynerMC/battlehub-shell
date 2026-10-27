@@ -3,6 +3,7 @@ import template from './game-host.html';
 import type { GameContext, GameModule } from './game-contracts';
 import { loadGameModule } from './remote-registry';
 import { GameLoadError } from './game-errors';
+import { GAME_START, GAME_STARTED } from './game-events';
 export { GameLoadError } from './game-errors';
 
 const LOAD_TIMEOUT_MS = 10_000;
@@ -45,11 +46,29 @@ export class GameHost {
         this.component = instance;
         await new Promise(r => setTimeout(r)); // esperar a que se renderice en el área del juego
         if (operation !== this.operation) return;
-        await instance.start();
+        if (context.events) {
+          // El host adapta la orden por evento al ciclo de vida del modulo.
+          let starting: Promise<void> | undefined;
+          const start = () => {
+            starting = Promise.resolve().then(async () => {
+              if (operation === this.operation) await instance!.start();
+            });
+          };
+          context.events.addEventListener(GAME_START, start, { once: true });
+          try {
+            context.events.dispatchEvent(new CustomEvent(GAME_START, { detail: { matchId: context.matchId, gameType: context.gameType } }));
+            await starting;
+          } finally { context.events.removeEventListener(GAME_START, start); }
+        } else {
+          await instance.start(); // Compatibilidad del demo sin canal de eventos.
+        }
       } catch (e) {
         throw e instanceof GameLoadError ? e : new GameLoadError('LIFECYCLE_ERROR', String(e), false);
       }
-      if (operation === this.operation) this.status = 'running';
+      if (operation === this.operation) {
+        this.status = 'running';
+        context.events?.dispatchEvent(new CustomEvent(GAME_STARTED, { detail: { matchId: context.matchId, gameType: context.gameType } }));
+      }
     } catch (e) {
       if (operation !== this.operation) {
         if (instance) await this.disposeRemote(instance);

@@ -3,9 +3,8 @@ export interface GameContext {
   matchId: string;
   gameType: 'typing' | 'trivia' | 'memory' | string;
   currentUser: { id: string; displayName: string };
-  // Extensión local de autorización para juegos; no modifica el contrato central.
-  getAccessToken?: () => Promise<string>;
-  getMatchmakingAccessToken?: () => Promise<string>;
+  // Canal local por partida. No contiene tokens ni acredita identidad ante el servidor.
+  events?: EventTarget;
 }
 
 export interface GameModule {

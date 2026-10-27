@@ -13,7 +13,6 @@ export interface AuthService {
   readonly user: SessionUser | null;
   initialize(): Promise<void>;
   getAccessToken(): Promise<string>;
-  getGameAccessToken?(gameType: string): Promise<string>;
   signIn(displayName: string): Promise<void>;
   signOut(): Promise<void>;
 }
