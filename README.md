@@ -184,7 +184,10 @@ La [preparación de Memory](docs/memory-integration.md) registra el remote en 40
 docker compose up --build
 ```
 
-Shell queda en `http://localhost:4000` en modo de prueba. Este Compose levanta solo Shell:
+Antes de levantarlo, configurar en `.env` el modo `auth0`, los datos publicos de la SPA
+y las URLs HTTPS de los servicios (tabla siguiente). Shell queda en `http://localhost:4000`.
+La imagen de produccion rechaza el modo mock; este solo se usa en pruebas/desarrollo.
+Este Compose levanta solo Shell:
 Profile, Matchmaking, juegos y sus bases de datos se despliegan por separado. No hay una
 base de datos propia de Shell. Para detenerlo: `docker compose down`.
 

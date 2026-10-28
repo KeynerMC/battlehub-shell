@@ -28,6 +28,9 @@ function httpsUrl(value, key, originOnly = false) {
 export function readPublicConfiguration(env) {
   const config = { BATTLEHUB_AUTH_MODE: env.BATTLEHUB_AUTH_MODE?.trim() || 'mock' };
   if (!['mock', 'auth0'].includes(config.BATTLEHUB_AUTH_MODE)) throw new Error('BATTLEHUB_AUTH_MODE debe ser mock o auth0.');
+  if (env.NODE_ENV === 'production' && config.BATTLEHUB_AUTH_MODE !== 'auth0') {
+    throw new Error('En produccion se requiere Auth0; el modo mock es solo para pruebas.');
+  }
   for (const key of publicKeys) if (env[key] !== undefined) config[key] = env[key].trim();
   if (config.BATTLEHUB_AUTH_MODE === 'auth0') {
     for (const key of publicKeys) if (!config[key]) throw new Error(`Falta configurar ${key}.`);

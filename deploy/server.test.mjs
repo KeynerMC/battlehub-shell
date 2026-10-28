@@ -50,6 +50,9 @@ test('la misma aplicacion sirve configuraciones distintas sin recompilar', async
 });
 
 test('valida el modo real, urls publicas HTTPS y configuracion de remotes', () => {
+  assert.throws(() => readPublicConfiguration({ NODE_ENV: 'production', BATTLEHUB_AUTH_MODE: 'mock' }), /produccion/);
+  assert.throws(() => readPublicConfiguration({ NODE_ENV: 'production' }), /produccion/);
+  assert.equal(readPublicConfiguration({ ...real, NODE_ENV: 'production' }).BATTLEHUB_AUTH_MODE, 'auth0');
   assert.throws(() => readPublicConfiguration({ BATTLEHUB_AUTH_MODE: 'auth0' }), /Falta/);
   assert.throws(() => readPublicConfiguration({ ...real, PROFILE_SERVICE_URL: 'http://profile.example.com' }), /HTTPS/);
   assert.throws(() => readPublicConfiguration({ ...real, PROFILE_SERVICE_URL: 'https://profile.railway.internal' }), /navegador/);

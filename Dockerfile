@@ -7,7 +7,7 @@ COPY . .
 RUN npm run build
 
 FROM node:22.23.4-alpine AS runtime
-ENV NODE_ENV=production PORT=8080 BATTLEHUB_AUTH_MODE=mock
+ENV NODE_ENV=production PORT=8080 BATTLEHUB_AUTH_MODE=auth0
 WORKDIR /app
 COPY --from=build --chown=node:node /app/dist ./dist
 COPY --chown=node:node deploy/server.mjs ./deploy/server.mjs
