@@ -3,7 +3,7 @@ declare global {
 }
 
 const publicKeys = ['BATTLEHUB_AUTH_MODE', 'AUTH0_DOMAIN', 'AUTH0_CLIENT_ID', 'AUTH0_AUDIENCE',
-  'PROFILE_SERVICE_URL', 'MATCHMAKING_SERVICE_URL'] as const;
+  'PROFILE_SERVICE_URL', 'MATCHMAKING_SERVICE_URL', 'PROFILE_ACCESS_PATH'] as const;
 
 export interface ShellConfiguration {
   mode: 'mock' | 'auth0';
@@ -11,6 +11,7 @@ export interface ShellConfiguration {
   clientId?: string;
   audience?: string;
   profileServiceUrl?: string;
+  profileAccessPath?: string;
   matchmakingServiceUrl?: string;
 }
 
@@ -53,7 +54,12 @@ export function readConfiguration(values: Record<string, string | undefined>): S
     requireSecureTransport(url, 'MATCHMAKING_SERVICE_URL');
     matchmakingServiceUrl = url.origin;
   }
+  const profileAccessPath = values.PROFILE_ACCESS_PATH?.trim();
+  if (profileAccessPath && (!/^\/api\/profiles\/[a-z0-9/_-]+$/i.test(profileAccessPath) || profileAccessPath.includes('//'))) {
+    throw new Error('PROFILE_ACCESS_PATH debe ser una ruta de /api/profiles, sin URL, query ni fragmento.');
+  }
   return { mode, domain, clientId, audience, profileServiceUrl: api.origin,
+    ...(profileAccessPath ? { profileAccessPath } : {}),
     ...(matchmakingServiceUrl ? { matchmakingServiceUrl } : {}) };
 }
 
@@ -66,6 +72,7 @@ export function loadConfiguration(): ShellConfiguration {
     AUTH0_CLIENT_ID: process.env.AUTH0_CLIENT_ID,
     AUTH0_AUDIENCE: process.env.AUTH0_AUDIENCE,
     PROFILE_SERVICE_URL: process.env.PROFILE_SERVICE_URL,
+    PROFILE_ACCESS_PATH: process.env.PROFILE_ACCESS_PATH,
     MATCHMAKING_SERVICE_URL: process.env.MATCHMAKING_SERVICE_URL,
   };
   const runtime = window.__BATTLEHUB_CONFIG__;

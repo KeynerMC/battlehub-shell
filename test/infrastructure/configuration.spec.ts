@@ -52,4 +52,11 @@ describe('Configuración del Shell', () => {
       else process.env.BATTLEHUB_AUTH_MODE = previous;
     }
   });
+  it('permite configurar el endpoint unificado solo dentro de Profile', () => {
+    expect(readConfiguration({ ...real, PROFILE_ACCESS_PATH: '/api/profiles/me/access' }).profileAccessPath).toBe('/api/profiles/me/access');
+    for (const path of ['https://other.example.com/api/profiles/me', '//other.example.com', '/api/profiles/../admin', '/api/profiles/me?token=bad']) {
+      expect(() => readConfiguration({ ...real, PROFILE_ACCESS_PATH: path })).toThrow('PROFILE_ACCESS_PATH');
+    }
+  });
+
 });

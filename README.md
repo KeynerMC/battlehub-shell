@@ -203,6 +203,7 @@ El servidor `deploy/server.mjs` toma estas variables cuando arranca:
 | `AUTH0_CLIENT_ID` | Client ID publico de la SPA de Shell |
 | `AUTH0_AUDIENCE` | Identificador de la API usada por Shell |
 | `PROFILE_SERVICE_URL` | Origen publico HTTPS de Profile, sin /api/profiles |
+| `PROFILE_ACCESS_PATH` | Opcional: ruta confirmada del JSON unificado de permisos y juegos; vacia mantiene los endpoints actuales |
 | `MATCHMAKING_SERVICE_URL` | Origen publico HTTPS de Matchmaking |
 | `REMOTES_CONFIG_JSON` | Objeto con scope, url HTTPS y module por juego; por defecto `{}` |
 
@@ -226,3 +227,18 @@ verifica rutas, configuracion, remotes y que no se publiquen secretos del entorn
 El modo de prueba no anuncia una integracion completa. Los juegos y Matchmaking todavia
 deben coordinar su adaptacion al flujo por eventos antes de habilitar partidas reales.
 La salud de Shell no comprueba la disponibilidad de esos servicios externos.
+
+### Contrato de acceso de Profile
+
+Shell reutiliza un bearer por sincronizacion y no lo entrega a los juegos. Filtra el catalogo
+segun los permisos recibidos y excluye juegos deshabilitados. El cliente acepta una identidad
+explicita `userId` o `auth0Sub` si Profile cambia su clave primaria; el id interno de base de
+datos nunca sustituye al `sub` de la sesion.
+
+Cuando Profile implemente y confirme su endpoint unificado, configurar `PROFILE_ACCESS_PATH`
+con esa ruta relativa de `/api/profiles/`. La respuesta esperada incluye `userId`, `permissions`
+y `games`; para Typing, Trivia y Memory puede omitirse `requiredPermission` y se usa el codigo
+`games.<gameType>.play`. `enabled: false` excluye el juego. Un error de ese endpoint no cae a
+permisos locales ni concede acceso. Con la variable vacia se conserva el contrato actual de
+cuatro endpoints; ese modo no demuestra el requisito de consulta M2M de permisos en Profile.
+La ruta de prueba `/api/profiles/me/access` no se considera un endpoint existente del equipo.

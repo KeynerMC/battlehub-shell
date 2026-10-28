@@ -35,6 +35,11 @@ export function readPublicConfiguration(env) {
     httpsUrl(config.PROFILE_SERVICE_URL, 'PROFILE_SERVICE_URL', true);
     httpsUrl(config.MATCHMAKING_SERVICE_URL, 'MATCHMAKING_SERVICE_URL', true);
   }
+  if (env.PROFILE_ACCESS_PATH?.trim()) {
+    const path = env.PROFILE_ACCESS_PATH.trim();
+    if (!/^\/api\/profiles\/[a-z0-9/_-]+$/i.test(path) || path.includes('//')) throw new Error('PROFILE_ACCESS_PATH invalido.');
+    config.PROFILE_ACCESS_PATH = path;
+  }
   return config;
 }
 

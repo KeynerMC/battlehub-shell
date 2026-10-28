@@ -36,6 +36,7 @@ describe('Profile Service HTTP (DTOs del Equipo 1)', () => {
     expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({ displayName: 'Ana', email: profile.email });
     for (const [, options] of fetchMock.mock.calls) expect(options.headers.Authorization).toBe('Bearer test-access-token');
     expect(service.status).toBe('ready');
+    expect(auth.getAccessToken).toHaveBeenCalledTimes(1);
   });
 
   it.each([401, 403, 404, 500])('muestra error %s sin borrar el login y permite reintentar', async status => {
@@ -94,6 +95,54 @@ describe('Profile Service HTTP (DTOs del Equipo 1)', () => {
       expect(await service.getEnabledGames()).toEqual([]);
       expect(fetchMock).toHaveBeenCalledTimes(8);
     } finally { clock.mockRestore(); }
+  });
+
+  it.each([
+    { permissions: [], expected: [] },
+    { permissions: ['games.trivia.play'], expected: ['trivia'] },
+    { permissions: ['games.typing.play', 'games.trivia.play', 'games.memory.play'], expected: ['typing', 'trivia', 'memory'] },
+  ])('muestra solo los juegos del JSON unificado para $permissions', async ({ permissions, expected }) => {
+    service = new HttpProfileService(auth, 'http://localhost:5220', '/api/profiles/me/access');
+    fetchMock.mockImplementation(async (url: string) => {
+      if (url.endsWith('/access')) return response({ userId: profile.id, permissions,
+        games: ['typing', 'trivia', 'memory'].map(gameType => ({ gameType, name: gameType, enabled: true })) });
+      return response(profile);
+    });
+    expect((await service.getEnabledGames()).map(game => game.gameType)).toEqual(expected);
+    expect(await service.getPermissions()).toEqual(permissions);
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(auth.getAccessToken).toHaveBeenCalledTimes(1);
+    for (const [, options] of fetchMock.mock.calls) expect(options.headers.Authorization).toBe('Bearer test-access-token');
+  });
+
+  it('no muestra juegos deshabilitados ni permisos ajenos al usuario', async () => {
+    service = new HttpProfileService(auth, 'http://localhost:5220', '/api/profiles/me/access');
+    const access = { userId: profile.id, permissions: ['games.trivia.play'], games: [
+      { gameType: 'trivia', name: 'Trivia', enabled: false },
+      { gameType: 'memory', name: 'Memory', enabled: true },
+    ] };
+    fetchMock.mockImplementation(async (url: string) => url.endsWith('/access') ? response(access) : response(profile));
+    expect(await service.getEnabledGames()).toEqual([]);
+    access.userId = 'auth0|otro';
+    await expect(service.sync()).rejects.toThrow('no corresponde');
+    expect(service.status).toBe('error');
+  });
+
+  it('no usa los permisos antiguos si falla el endpoint unificado configurado', async () => {
+    service = new HttpProfileService(auth, 'http://localhost:5220', '/api/profiles/me/access');
+    fetchMock.mockImplementation(async (url: string) => url.endsWith('/access') ? response({}, 503) : response(profile));
+    await expect(service.getEnabledGames()).rejects.toThrow();
+    expect(fetchMock.mock.calls.map(call => call[0])).not.toContain('http://localhost:5220/api/profiles/me/permissions');
+    expect(service.status).toBe('error');
+  });
+
+  it('separa la identidad Auth0 de una clave primaria numerica del perfil', async () => {
+    fetchMock.mockImplementation(async (url: string) => {
+      if (url.endsWith('/permissions')) return response({ permissions: [] });
+      if (url.endsWith('/games')) return response([]);
+      return response({ ...profile, id: 42, userId: profile.id });
+    });
+    expect((await service.getProfile()).id).toBe(profile.id);
   });
 
 });

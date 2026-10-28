@@ -85,3 +85,8 @@ test('sirve remotes reemplazados por entorno en lugar de una URL de ejemplo', as
   assert.equal(response.headers.get('cache-control'), 'no-store');
   assert.deepEqual(await response.json(), remotes);
 });
+
+test('publica la ruta unificada solo si es local al Profile Service', () => {
+  assert.equal(readPublicConfiguration({ ...real, PROFILE_ACCESS_PATH: '/api/profiles/me/access' }).PROFILE_ACCESS_PATH, '/api/profiles/me/access');
+  assert.throws(() => readPublicConfiguration({ ...real, PROFILE_ACCESS_PATH: 'https://other.example.com/api/profiles/me' }), /PROFILE_ACCESS_PATH/);
+});
