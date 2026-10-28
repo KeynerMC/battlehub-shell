@@ -242,3 +242,16 @@ y `games`; para Typing, Trivia y Memory puede omitirse `requiredPermission` y se
 permisos locales ni concede acceso. Con la variable vacia se conserva el contrato actual de
 cuatro endpoints; ese modo no demuestra el requisito de consulta M2M de permisos en Profile.
 La ruta de prueba `/api/profiles/me/access` no se considera un endpoint existente del equipo.
+
+### Practica integrada
+
+El catalogo ofrece `/practice/:gameType` para remotes registrados. La ruta comprueba
+sesion, catalogo y permiso de Profile antes de cargar el juego; tambien lo comprueba
+al reintentar. Usa GameModule con un contexto `mode: 'practice'`, `gameType`,
+`currentUser` y `events`, sin `matchId` ni tokens. No resuelve Matchmaking ni guarda
+resultados al recibir eventos de fin. El remote debe reconocer ese modo y evitar
+crear partidas o persistir resultados por su cuenta. Esto requiere adaptacion y prueba
+con cada equipo; el estado del catalogo no certifica que un remote ya soporte practica.
+
+`npm run typecheck` ejecuta el compilador local. Las pruebas exigen al menos 85 % de
+lineas y sentencias globales, sin excluir archivos de produccion del calculo.

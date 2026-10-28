@@ -7,8 +7,18 @@ export interface GameContext {
   events?: EventTarget;
 }
 
+// Practica no representa una sala ni una partida persistida.
+export interface PracticeContext {
+  mode: 'practice';
+  matchId?: never;
+  gameType: string;
+  currentUser: { id: string; displayName: string };
+  events: EventTarget;
+}
+export type GameLaunchContext = GameContext | PracticeContext;
+
 export interface GameModule {
-  initialize(context: GameContext): Promise<void>;
+  initialize(context: GameLaunchContext): Promise<void>;
   start(): Promise<void>;
   pause(): Promise<void>;
   dispose(): Promise<void>;

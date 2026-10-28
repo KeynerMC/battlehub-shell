@@ -1,6 +1,6 @@
 import { customElement, bindable, resolve, IContainer } from 'aurelia';
 import template from './game-host.html';
-import type { GameContext, GameModule } from './game-contracts';
+import type { GameLaunchContext, GameModule } from './game-contracts';
 import { loadGameModule } from './remote-registry';
 import { GameLoadError } from './game-errors';
 import { GAME_START, GAME_STARTED } from './game-events';
@@ -11,7 +11,7 @@ const AUTO_RETRY_DELAYS_MS = [1_000, 2_000]; // 2 reintentos automáticos (total
 
 @customElement({ name: 'game-host', template })
 export class GameHost {
-  @bindable public context!: GameContext;
+  @bindable public context!: GameLaunchContext;
   @bindable public onExit?: () => void;
 
   public status: 'idle' | 'loading' | 'running' | 'paused' | 'error' = 'idle';

@@ -22,7 +22,8 @@
         <span if.bind="isRegistered(game.gameType)" class="badge badge-success">${game.gameType === 'demo' ? 'Demo disponible' : 'Remote registrado'}</span>
         <span else class="badge badge-muted">Integración pendiente</span>
         <a if.bind="auth.mode === 'mock' && game.gameType === playableGameType" class="button button-block" href="/play">▷ Probar demo</a>
-        <a if.bind="auth.mode === 'auth0'" class="button button-block" href="/matches">Ver salas <span aria-hidden="true">→</span></a>
+        <a if.bind="auth.mode === 'auth0' && isRegistered(game.gameType)" class="button button-block" href.bind="'/practice/' + game.gameType">Practicar</a>
+        <a if.bind="auth.mode === 'auth0'" class="button button-secondary button-block" href="/matches">Ver salas <span aria-hidden="true">→</span></a>
         <button if.bind="auth.mode === 'mock' && game.gameType !== playableGameType" class="button button-block" disabled>Juego pendiente</button>
       </div>
     </article>
