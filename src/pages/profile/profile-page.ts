@@ -19,13 +19,18 @@ export class ProfilePage {
 
   public canLoad(): boolean | string { return this.auth.user ? true : 'login'; }
 
-  public async loading(): Promise<void> {
+  public loading(): Promise<void> { return this.load(false); }
+  public refresh(): Promise<void> { return this.load(true); }
+
+  private async load(refresh: boolean): Promise<void> {
+    if (this.busy) return;
     this.busy = true;
     this.error = '';
     this.profile = null;
     this.permissions = [];
     const user = this.auth.user;
     try {
+      if (refresh) await this.profiles.sync();
       const [profile, permissions] = await Promise.all([this.profiles.getProfile(), this.profiles.getPermissions()]);
       if (this.auth.user !== user) return;
       this.profile = profile;

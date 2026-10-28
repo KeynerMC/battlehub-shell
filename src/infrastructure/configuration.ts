@@ -1,12 +1,17 @@
+declare global {
+  interface Window { __BATTLEHUB_CONFIG__?: unknown }
+}
+
+const publicKeys = ['BATTLEHUB_AUTH_MODE', 'AUTH0_DOMAIN', 'AUTH0_CLIENT_ID', 'AUTH0_AUDIENCE',
+  'PROFILE_SERVICE_URL', 'MATCHMAKING_SERVICE_URL', 'PROFILE_ACCESS_PATH'] as const;
+
 export interface ShellConfiguration {
   mode: 'mock' | 'auth0';
   domain?: string;
   clientId?: string;
   audience?: string;
-  typingAudience?: string;
-  triviaAudience?: string;
-  memoryAudience?: string;
   profileServiceUrl?: string;
+  profileAccessPath?: string;
   matchmakingServiceUrl?: string;
 }
 
@@ -25,12 +30,19 @@ export function readConfiguration(values: Record<string, string | undefined>): S
   }
   const clientId = required('AUTH0_CLIENT_ID');
   const audience = required('AUTH0_AUDIENCE');
+  const requireSecureTransport = (url: URL, key: string): void => {
+    const loopback = ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname);
+    if (url.protocol !== 'https:' && !(values.NODE_ENV === 'development' && loopback && url.protocol === 'http:')) {
+      throw new Error(`${key} requiere HTTPS; HTTP solo se permite en localhost durante desarrollo.`);
+    }
+  };
   let api: URL;
   try { api = new URL(required('PROFILE_SERVICE_URL')); }
   catch { throw new Error('PROFILE_SERVICE_URL debe ser una URL absoluta del servicio.'); }
   if (!['http:', 'https:'].includes(api.protocol) || api.username || api.password || api.search || api.hash || api.pathname !== '/') {
     throw new Error('PROFILE_SERVICE_URL debe contener solo el origen del servicio, sin credenciales ni rutas.');
   }
+  requireSecureTransport(api, 'PROFILE_SERVICE_URL');
   let matchmakingServiceUrl: string | undefined;
   if (values.MATCHMAKING_SERVICE_URL?.trim()) {
     let url: URL;
@@ -39,26 +51,46 @@ export function readConfiguration(values: Record<string, string | undefined>): S
     if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password || url.search || url.hash || url.pathname !== '/') {
       throw new Error('MATCHMAKING_SERVICE_URL debe contener solo el origen del servicio.');
     }
+    requireSecureTransport(url, 'MATCHMAKING_SERVICE_URL');
     matchmakingServiceUrl = url.origin;
   }
+  const profileAccessPath = values.PROFILE_ACCESS_PATH?.trim();
+  if (profileAccessPath && (!/^\/api\/profiles\/[a-z0-9/_-]+$/i.test(profileAccessPath) || profileAccessPath.includes('//'))) {
+    throw new Error('PROFILE_ACCESS_PATH debe ser una ruta de /api/profiles, sin URL, query ni fragmento.');
+  }
   return { mode, domain, clientId, audience, profileServiceUrl: api.origin,
-    ...(values.AUTH0_TYPING_AUDIENCE?.trim() ? { typingAudience: values.AUTH0_TYPING_AUDIENCE.trim() } : {}),
-    ...(values.AUTH0_TRIVIA_AUDIENCE?.trim() ? { triviaAudience: values.AUTH0_TRIVIA_AUDIENCE.trim() } : {}),
-    ...(values.AUTH0_MEMORY_AUDIENCE?.trim() ? { memoryAudience: values.AUTH0_MEMORY_AUDIENCE.trim() } : {}),
+    ...(profileAccessPath ? { profileAccessPath } : {}),
     ...(matchmakingServiceUrl ? { matchmakingServiceUrl } : {}) };
 }
 
 export function loadConfiguration(): ShellConfiguration {
   // Referencias explícitas: dotenv-webpack sustituye únicamente las variables utilizadas.
-  return readConfiguration({
+  const values: Record<string, string | undefined> = {
+    NODE_ENV: process.env.NODE_ENV,
     BATTLEHUB_AUTH_MODE: process.env.BATTLEHUB_AUTH_MODE,
     AUTH0_DOMAIN: process.env.AUTH0_DOMAIN,
     AUTH0_CLIENT_ID: process.env.AUTH0_CLIENT_ID,
     AUTH0_AUDIENCE: process.env.AUTH0_AUDIENCE,
-    AUTH0_TYPING_AUDIENCE: process.env.AUTH0_TYPING_AUDIENCE,
-    AUTH0_TRIVIA_AUDIENCE: process.env.AUTH0_TRIVIA_AUDIENCE,
-    AUTH0_MEMORY_AUDIENCE: process.env.AUTH0_MEMORY_AUDIENCE,
     PROFILE_SERVICE_URL: process.env.PROFILE_SERVICE_URL,
+    PROFILE_ACCESS_PATH: process.env.PROFILE_ACCESS_PATH,
     MATCHMAKING_SERVICE_URL: process.env.MATCHMAKING_SERVICE_URL,
-  });
+  };
+  const runtime = window.__BATTLEHUB_CONFIG__;
+  if (runtime !== undefined) {
+    if (!runtime || typeof runtime !== 'object' || Array.isArray(runtime)) {
+      throw new Error('La configuracion publica del Shell es invalida.');
+    }
+    for (const key of publicKeys) {
+      if (Object.prototype.hasOwnProperty.call(runtime, key)) {
+        const value = (runtime as Record<string, unknown>)[key];
+        if (typeof value !== 'string') throw new Error(`La variable ${key} debe ser texto.`);
+        values[key] = value;
+      }
+    }
+  }
+  const config = readConfiguration(values);
+  if (config.mode === 'auth0' && process.env.NODE_ENV !== 'development' && window.location.protocol !== 'https:') {
+    throw new Error('El Shell con Auth0 requiere HTTPS fuera de desarrollo.');
+  }
+  return config;
 }

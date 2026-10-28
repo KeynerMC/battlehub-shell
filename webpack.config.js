@@ -31,14 +31,11 @@ module.exports = function(env, { analyze }) {
     mode: production ? 'production' : 'development',
     devtool: production ? undefined : 'eval-source-map',
     optimization: {
+      splitChunks: { chunks: 'all', maxSize: 200 * 1024 },
       minimizer: [
         new TerserPlugin({
           terserOptions: {
-            // Terser fast minify mode
-            // https://github.com/terser-js/terser#terser-fast-minify-mode
-            // It's a good balance on size and speed to turn off compress.
-            // Also bypass some terser bug.
-            compress: false
+            compress: true
           },
         }),
       ],
@@ -82,7 +79,7 @@ module.exports = function(env, { analyze }) {
       new CopyPlugin({ patterns: [{
         from: `config/remotes.${env.target || (production ? 'production' : 'local')}.json`,
         to: 'remotes.config.json',
-      }] }),
+      }, { from: 'config/browser-config.js', to: 'shell-config.js' }] }),
       new HtmlWebpackPlugin({ template: 'index.html', favicon: 'favicon.ico' }),
       new Dotenv({
         path: `./.env${production ? '' :  '.' + (process.env.NODE_ENV || 'development')}`,

@@ -35,7 +35,11 @@ export class CatalogPage {
 
   public canLoad(): boolean | string { return this.auth.user ? true : 'login'; }
 
-  public async loading(): Promise<void> {
+  public loading(): Promise<void> { return this.load(false); }
+  public refresh(): Promise<void> { return this.load(true); }
+
+  private async load(refresh: boolean): Promise<void> {
+    if (this.busy) return;
     this.busy = true;
     this.error = '';
     this.games = [];
@@ -43,6 +47,7 @@ export class CatalogPage {
     this.remoteError = '';
     const user = this.auth.user;
     try {
+      if (refresh) await this.profiles.sync();
       const games = await this.profiles.getEnabledGames();
       if (this.auth.user !== user) return;
       this.games = games;

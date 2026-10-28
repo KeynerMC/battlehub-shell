@@ -46,6 +46,6 @@
     "test": "echo \"PoC sin pruebas unitarias\""
   },
   "engines": {
-    "node": ">=24.11.0 <25"
+    "node": ">=22 <23"
   }
 }

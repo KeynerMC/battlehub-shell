@@ -1,10 +1,11 @@
-import { resolve } from 'aurelia';
+import { resolve, watch } from 'aurelia';
 import { HubConnectionState, type HubConnection } from '@microsoft/signalr';
 import { IAuthService } from '../../auth/auth-service';
 import { IProfileService } from '../../profile/profile-service';
 import { IRemoteMatchmaking, MatchmakingError, type RemoteRoom } from '../../matchmaking/remote-matchmaking-service';
 import type { GameHost } from '../../games/game-host';
 import type { GameContext } from '../../games/game-contracts';
+import { GAME_FINISHED, isGameEvent } from '../../games/game-events';
 import { loadRemotesConfig } from '../../games/remote-loader';
 import { roomStatus } from '../../games/game-presentation';
 
@@ -26,6 +27,10 @@ export class MatchesPage {
   public gameMessage = '';
   public pendingGame?: RemoteRoom;
   public gameFinished = false;
+  public finishPending = false;
+  public notifyingFinish = false;
+  private finishRequest?: GameContext;
+  private removeGameEvents?: () => void;
   public query = '';
   public filterGame = '';
   public showCreate = false;
@@ -45,16 +50,18 @@ export class MatchesPage {
   private refreshing = false;
   private refreshAgain = false;
   private entering?: string;
+  private dismissedRoom?: string;
   public canLoad(): boolean | string { return this.auth.user ? this.auth.mode === 'auth0' ? true : 'lobby' : 'login'; }
   public async attached(): Promise<void> {
     this.active = true;
     try {
-      const permissions = await this.profiles.getPermissions();
+      const [permissions, games] = await Promise.all([
+        this.profiles.getPermissions(), this.profiles.getEnabledGames(),
+      ]);
       if (!this.active) return;
       this.canCreate = permissions.includes('matches.create');
-      // Permite probar las salas aunque el catálogo aún no tenga registros ni remotes.
-      this.games = [{ gameType: 'typing', name: 'Typing Battle' }, { gameType: 'trivia', name: 'Trivia Battle' },
-        { gameType: 'memory', name: 'Memory Match' }].filter(g => permissions.includes(`games.${g.gameType}.play`));
+      this.games = games.filter(game => ['typing', 'trivia', 'memory'].includes(game.gameType)
+        && permissions.includes(game.requiredPermission || `games.${game.gameType}.play`));
       this.gameType = this.games[0]?.gameType || '';
       await this.connect();
       await this.refresh();
@@ -92,8 +99,9 @@ export class MatchesPage {
     try {
       do {
         this.refreshAgain = false;
+        const user = this.auth.user;
         const rooms = await this.service.list();
-        if (!this.active) return;
+        if (!this.active || this.auth.user !== user) return;
         this.rooms = rooms;
         if (this.context && !this.gameFinished && !rooms.some(r => r.id === this.context?.matchId && r.status === 'Started' && this.isMember(r))) {
           try {
@@ -111,9 +119,14 @@ export class MatchesPage {
           this.gameMessage = '';
         }
         const started = rooms.find(r => r.status === 'Started' && this.isMember(r));
-        if (started && !this.context && this.entering !== started.id) await this.openGame(started);
+        if (started && started.id !== this.dismissedRoom && !this.context && this.entering !== started.id) await this.openGame(started);
       } while (this.refreshAgain && this.active);
-    } catch (error) { if (this.active) this.error = this.message(error); }
+    } catch (error) {
+      if (this.active) {
+        if (error instanceof MatchmakingError && [401, 403].includes(error.status)) await this.closeGame();
+        this.error = this.message(error);
+      }
+    }
     finally { this.refreshing = false; }
   }
   private async heartbeat(): Promise<void> {
@@ -143,24 +156,26 @@ export class MatchesPage {
     finally { this.busy = false; }
   }
   public async openGame(room: RemoteRoom): Promise<void> {
+    if (this.entering || !this.active) return;
+    const user = this.auth.user;
+    if (!user) return;
     if (room.status !== 'Started' || !this.isMember(room) || this.context) return;
     this.entering = room.id;
     this.gameMessage = '';
     try {
       if (room.gameType === 'memory' && room.participants.length !== 2) throw new Error('Esta versión de Memory necesita exactamente dos participantes.');
       const remotes = await loadRemotesConfig();
-      if (!this.active || !this.auth.user) return;
+      if (!this.active || this.auth.user !== user) return;
       if (!remotes[room.gameType]) {
         this.gameMessage = `La partida comenzó. El equipo de ${room.gameType} todavía no tiene un remote configurado.`;
         return;
       }
-      if (['typing', 'trivia', 'memory'].includes(room.gameType)) {
-        this.pendingGame = room;
-        if (!this.auth.getGameAccessToken) throw new Error(`El Shell no dispone de autorización para ${room.gameType}.`);
-        await this.auth.getGameAccessToken(room.gameType);
-      }
+      const permissions = await this.profiles.getPermissions();
+      if (!permissions.includes(`games.${room.gameType}.play`)) throw new Error('No tienes permiso para jugar esta partida.');
+      if (!this.active || this.auth.user !== user) return;
       await this.mountGame(room);
-    } catch (error) { if (this.active) this.gameMessage = this.message(error); }
+    } catch (error) { if (this.active && this.auth.user === user) this.gameMessage = this.message(error); }
+    finally { this.entering = undefined; }
   }
   private async mountGame(room: RemoteRoom): Promise<void> {
     const user = this.auth.user;
@@ -174,31 +189,100 @@ export class MatchesPage {
     this.pendingGame = undefined;
     this.gameMessage = '';
     this.gameFinished = false;
-    const context: GameContext = { matchId: current.id, gameType: current.gameType, currentUser: { id: user.id, displayName: user.displayName },
-      ...(['typing', 'trivia', 'memory'].includes(current.gameType) ? { getAccessToken: async () => {
-        if (!this.active || this.auth.user !== user || this.context !== context) throw new Error('La sesión cambió o el juego se cerró.');
-        const token = await this.auth.getGameAccessToken!(current.gameType);
-        if (!this.active || this.auth.user !== user || this.context !== context) throw new Error('La sesión cambió o el juego se cerró.');
-        return token;
-      } } : {}),
-      ...(['trivia', 'memory'].includes(current.gameType) ? { getMatchmakingAccessToken: async () => {
-        if (!this.active || this.auth.user !== user || this.context !== context) throw new Error('La sesión cambió o el juego se cerró.');
-        const token = await this.auth.getAccessToken();
-        if (!this.active || this.auth.user !== user || this.context !== context) throw new Error('La sesión cambió o el juego se cerró.');
-        return token;
-      } } : {}) };
+    const context: GameContext = {
+      matchId: current.id, gameType: current.gameType,
+      currentUser: { id: user.id, displayName: user.displayName }, events: new EventTarget(),
+    };
+    const finished = (event: Event) => {
+      if (!this.active || this.auth.user !== user || this.context !== context
+        || !isGameEvent(event, context.matchId, context.gameType) || this.gameFinished) return;
+      this.finishPending = true;
+      void this.notifyGameFinished();
+    };
+    this.removeGameEvents?.();
+    context.events!.addEventListener(GAME_FINISHED, finished);
+    this.removeGameEvents = () => context.events!.removeEventListener(GAME_FINISHED, finished);
+    this.finishPending = false;
+    this.finishRequest = undefined;
+    this.notifyingFinish = false;
     this.context = context;
     if (this.host) { this.host.context = this.context; await this.host.load(); }
   }
-  private async closeGame(): Promise<void> {
-    await this.host?.exit();
-    this.onGameExit();
+  public async notifyGameFinished(): Promise<void> {
+    const context = this.context;
+    const user = this.auth.user;
+    if (!this.active || !context || !user || !this.finishPending || this.finishRequest === context || this.gameFinished) return;
+    this.finishRequest = context;
+    this.notifyingFinish = true;
+    this.gameMessage = '';
+    try {
+      const current = await this.service.get(context.matchId);
+      if (!this.active || this.context !== context || this.auth.user !== user) return;
+      if (current.gameType !== context.gameType || !this.isMember(current)
+        || !['Started', 'Finished'].includes(current.status)) throw new Error('La partida ya no permite esta notificacion.');
+      if (current.status !== 'Finished') await this.service.notifyFinished(context.matchId);
+      if (!this.active || this.context !== context || this.auth.user !== user) return;
+      const confirmed = await this.service.get(context.matchId);
+      if (!this.active || this.context !== context || this.auth.user !== user) return;
+      if (confirmed.status !== 'Finished' || confirmed.gameType !== context.gameType || !this.isMember(confirmed)) {
+        throw new Error('Matchmaking aun no confirma la finalizacion.');
+      }
+      this.gameFinished = true;
+      this.finishPending = false;
+    } catch {
+      if (this.active && this.context === context && this.auth.user === user) {
+        this.gameMessage = 'El juego aviso que termino, pero Matchmaking no confirmo la finalizacion. Puedes reintentar; no necesitas autorizar el juego otra vez.';
+      }
+    } finally {
+      if (this.finishRequest === context) { this.finishRequest = undefined; this.notifyingFinish = false; }
+    }
   }
-  public onGameExit = () => { this.context = undefined; this.gameFinished = false; };
+
+  private async closeGame(): Promise<void> {
+    try { await this.host?.exit(); } finally { this.onGameExit(); }
+  }
+  public onGameExit = () => {
+    this.dismissedRoom = this.context?.matchId ?? this.dismissedRoom;
+    this.removeGameEvents?.();
+    this.removeGameEvents = undefined;
+    this.finishPending = false;
+    this.finishRequest = undefined;
+    this.notifyingFinish = false;
+    this.context = undefined;
+    this.pendingGame = undefined;
+    this.gameFinished = false;
+  };
+
+  @watch((page: MatchesPage) => page.auth.user)
+  public sessionChanged(): void {
+    if (!this.active) return;
+    this.active = false;
+    clearInterval(this.timer);
+    this.rooms = [];
+    this.games = [];
+    this.canCreate = false;
+    this.removeGameEvents?.();
+    this.removeGameEvents = undefined;
+    this.finishPending = false;
+    this.finishRequest = undefined;
+    this.notifyingFinish = false;
+    this.context = undefined;
+    this.pendingGame = undefined;
+    void this.closeGame().catch(() => { this.error = 'No se pudo cerrar el juego anterior.'; });
+    void this.connection?.stop().catch(() => { this.connectionStatus = 'Desconectado'; });
+    this.error = 'La sesion cambio. Vuelve a entrar a las salas.';
+  }
   public async detaching(): Promise<void> {
     this.active = false;
     clearInterval(this.timer);
-    await this.connection?.stop();
+    this.removeGameEvents?.();
+    this.removeGameEvents = undefined;
+    this.finishPending = false;
+    this.finishRequest = undefined;
+    this.notifyingFinish = false;
+    this.context = undefined;
+    this.pendingGame = undefined;
+    try { await this.host?.exit(); } finally { await this.connection?.stop(); }
   }
   private message(error: unknown): string { return error instanceof Error ? error.message : 'No se pudo actualizar la sala.'; }
 }

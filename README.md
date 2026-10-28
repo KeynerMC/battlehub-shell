@@ -18,11 +18,11 @@ Client ID, Audience, URL de la API y callbacks. Por defecto se usa `BATTLEHUB_AU
 El modo `auth0` permite acceder al perfil, catálogo y salas reales en `/matches`.
 El modo `mock` conserva las salas de demostración y el juego demo.
 
-## Versiones (ADR-003)
+## Versiones (cierre oficial de etapa 2)
 
 | Herramienta | Versión |
 |---|---|
-| Node.js | 24 LTS (`>=24.11.0 <25`, ver `.nvmrc`) |
+| Node.js | 22 LTS (`>=22 <23`, ver `.nvmrc`) |
 | `aurelia` y `@aurelia/*` | `2.0.0-rc.2` exacta |
 | Webpack | 5 |
 
@@ -67,8 +67,10 @@ muestra el error después de los reintentos. Reinicia el remote y pulsa **Reinte
 Webpack publica ese archivo como `/remotes.config.json` y el cargador lo consulta al ejecutar.
 `tooling/mf-shared.js` mantiene las versiones compartidas con el demo.
 
-El build de producción selecciona `config/remotes.production.json`, cuya URL sigue siendo
-un ejemplo y debe reemplazarse antes de desplegar. Para compilar optimizado con el remote local:
+El build de produccion selecciona `config/remotes.production.json`, que empieza vacio.
+El servidor de produccion sirve los remotes definidos en `REMOTES_CONFIG_JSON` al arrancar,
+sin recompilar la imagen. No se publican direcciones de ejemplo como juegos disponibles.
+Para compilar optimizado con el remote local:
 
 ```powershell
 npm.cmd run build -- --env target=local
@@ -144,18 +146,20 @@ oficial. No cambia el estado de los demás participantes ni inicia una partida m
 ```text
 /src                → código fuente del Shell
 /src/games          → contrato, registro, carga y ciclo de vida de juegos
+/src/server         -> servidor HTTP de produccion
+/tests/integration  -> pruebas HTTP y de navegador
 /src/pages/play     → pantalla de integración con contexto simulado
 /config             → registro de remotes por ambiente
 /tooling            → configuración de dependencias compartidas
-/test               → pruebas unitarias
+/tests/unit         → pruebas unitarias
 /poc                → prueba de concepto del ADR-003 (Module Federation)
 /.github/workflows  → pipeline de CI de la aplicación principal
 ```
 
 ## Pruebas de navegador
 
-Las pruebas del Shell principal están en `e2e/`, separadas de `poc/e2e/`.
-Consulta [las instrucciones E2E](e2e/README.md) para ejecutar el recorrido de sesión,
+Las pruebas del Shell principal están en `tests/integration/browser/`, separadas de `poc/e2e/`.
+Consulta [las instrucciones E2E](tests/integration/browser/README.md) para ejecutar el recorrido de sesión,
 perfil, catálogo, sala, demo y salida, y la recuperación ante un remote inaccesible.
 Requieren Chromium de Playwright. El job `build-and-test` también las ejecuta en cada
 Pull Request hacia `main` y en los pushes a `main`, después de lint, build y pruebas unitarias.
@@ -175,3 +179,84 @@ La [preparación de Memory](docs/memory-integration.md) registra el remote en 40
 
 - Commits en formato semántico (`feat:`, `fix:`, `docs:`, `test:`, `chore:`, `ci:`...).
 - `main` protegida: todo cambio entra por Pull Request con CI en verde y al menos 1 aprobación.
+
+## Ejecutar con Docker
+
+```bash
+docker compose up --build
+```
+
+Antes de levantarlo, configurar en `.env` el modo `auth0`, los datos publicos de la SPA
+y las URLs HTTPS de los servicios (tabla siguiente). Shell queda en `http://localhost:4000`.
+La imagen de produccion rechaza el modo mock; este solo se usa en pruebas/desarrollo.
+Este Compose levanta solo Shell:
+Profile, Matchmaking, juegos y sus bases de datos se despliegan por separado. No hay una
+base de datos propia de Shell. Para detenerlo: `docker compose down`.
+
+La imagen tiene una etapa de compilacion y otra de ejecucion, con Node 22 y usuario no root.
+Sirve las rutas de la SPA, los recursos compilados y `GET /health`. En Railway escucha en
+`0.0.0.0` y usa `PORT`; `railway.json` configura Docker y la comprobacion de salud.
+
+### Configuracion publica al iniciar
+
+El servidor `src/server/server.mjs` toma estas variables cuando arranca:
+
+| Variable | Uso |
+| --- | --- |
+| `BATTLEHUB_AUTH_MODE` | `mock` para vista previa; `auth0` para login real |
+| `AUTH0_DOMAIN` | Hostname del tenant, sin https:// |
+| `AUTH0_CLIENT_ID` | Client ID publico de la SPA de Shell |
+| `AUTH0_AUDIENCE` | Identificador de la API usada por Shell |
+| `PROFILE_SERVICE_URL` | Origen publico HTTPS de Profile, sin /api/profiles |
+| `PROFILE_ACCESS_PATH` | Opcional: ruta confirmada del JSON unificado de permisos y juegos; vacia mantiene los endpoints actuales |
+| `MATCHMAKING_SERVICE_URL` | Origen publico HTTPS de Matchmaking |
+| `REMOTES_CONFIG_JSON` | Objeto con scope, url HTTPS y module por juego; por defecto `{}` |
+
+En modo `auth0` se exigen todas las variables de acceso y ambos servicios. El contenedor
+rechaza URLs locales o de la red privada de Railway, porque las llama el navegador.
+Shell publicado requiere HTTPS; el proveedor de hosting puede terminar TLS delante del
+contenedor HTTP. Las variables se cargan antes de iniciar Aurelia mediante `/shell-config.js`.
+Cambiar variables requiere reiniciar o redesplegar el servicio; no reconstruir la imagen.
+No se pasa NODE_ENV desde ese archivo para eludir las comprobaciones de produccion.
+
+Todo lo servido en `/shell-config.js` y `/remotes.config.json` es publico. Nunca configurar
+ClientSecret, tokens M2M o conexiones de bases de datos en el frontend. El servidor solo
+publica una lista explicita de claves y no devuelve el resto de variables del proceso.
+Las URLs de remotes deben apuntar a juegos confiables que permitan cargar sus recursos
+con CORS y compartan las versiones de Aurelia del contrato.
+
+Para probar el servidor sin Docker: `npm run build` y `npm run serve` (puerto 8080 por defecto).
+Para comprobarlo: `npm run test:server`. Esta suite usa HTTP real en un puerto temporal y
+verifica rutas, configuracion, remotes y que no se publiquen secretos del entorno.
+
+El modo de prueba no anuncia una integracion completa. Los juegos y Matchmaking todavia
+deben coordinar su adaptacion al flujo por eventos antes de habilitar partidas reales.
+La salud de Shell no comprueba la disponibilidad de esos servicios externos.
+
+### Contrato de acceso de Profile
+
+Shell reutiliza un bearer por sincronizacion y no lo entrega a los juegos. Filtra el catalogo
+segun los permisos recibidos y excluye juegos deshabilitados. El cliente acepta una identidad
+explicita `userId` o `auth0Sub` si Profile cambia su clave primaria; el id interno de base de
+datos nunca sustituye al `sub` de la sesion.
+
+Cuando Profile implemente y confirme su endpoint unificado, configurar `PROFILE_ACCESS_PATH`
+con esa ruta relativa de `/api/profiles/`. La respuesta esperada incluye `userId`, `permissions`
+y `games`; para Typing, Trivia y Memory puede omitirse `requiredPermission` y se usa el codigo
+`games.<gameType>.play`. `enabled: false` excluye el juego. Un error de ese endpoint no cae a
+permisos locales ni concede acceso. Con la variable vacia se conserva el contrato actual de
+cuatro endpoints; ese modo no demuestra el requisito de consulta M2M de permisos en Profile.
+La ruta de prueba `/api/profiles/me/access` no se considera un endpoint existente del equipo.
+
+### Practica integrada
+
+El catalogo ofrece `/practice/:gameType` para remotes registrados. La ruta comprueba
+sesion, catalogo y permiso de Profile antes de cargar el juego; tambien lo comprueba
+al reintentar. Usa GameModule con un contexto `mode: 'practice'`, `gameType`,
+`currentUser` y `events`, sin `matchId` ni tokens. No resuelve Matchmaking ni guarda
+resultados al recibir eventos de fin. El remote debe reconocer ese modo y evitar
+crear partidas o persistir resultados por su cuenta. Esto requiere adaptacion y prueba
+con cada equipo; el estado del catalogo no certifica que un remote ya soporte practica.
+
+`npm run typecheck` ejecuta el compilador local. Las pruebas exigen al menos 85 % de
+lineas y sentencias globales, sin excluir archivos de produccion del calculo.
