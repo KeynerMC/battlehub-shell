@@ -52,6 +52,7 @@
     "lint:js": "eslint \"src/**/*.{js,ts}\" \"test/**/*.{js,ts}\"",
     "lint:css": "stylelint \"src/**/*.css\"",
     "lint": "npm run lint:js && npm run lint:css",
+    "typecheck": "node node_modules/typescript/bin/tsc --noEmit",
     "pretest": "npm run lint",
     "start": "webpack serve",
     "build": "webpack --env production",
@@ -73,6 +74,8 @@
       "\\.(ts|html)$": "@aurelia/ts-jest"
     },
     "collectCoverage": true,
+    "coverageReporters": ["text", "lcov", "json", "json-summary"],
+    "coverageThreshold": { "global": { "lines": 85, "statements": 85 } },
     "collectCoverageFrom": [
       "src/**/*.ts",
       "!src/**/*.d.ts"

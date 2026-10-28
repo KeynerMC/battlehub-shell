@@ -1,0 +1,35 @@
+import { DI, Registration } from 'aurelia';
+import { IAuthService } from '../../src/auth/auth-service';
+import { MockAuthService } from '../../src/auth/mock-auth-service';
+import { IMatchmakingService } from '../../src/matchmaking/matchmaking-service';
+import { MockMatchmakingService } from '../../src/matchmaking/mock-matchmaking-service';
+import { LobbyPage } from '../../src/pages/lobby/lobby-page';
+
+it('el lobby conserva pertenencia y permite recuperarse de un fallo sin duplicar operaciones', async () => {
+  const auth = new MockAuthService();
+  const container = DI.createContainer();
+  container.register(Registration.instance(IAuthService, auth), Registration.singleton(IMatchmakingService, MockMatchmakingService));
+  const page = container.invoke(LobbyPage);
+  expect(page.canLoad()).toBe('login');
+  await auth.signIn('Ana');
+  expect(page.canLoad()).toBe(true);
+  await page.loading();
+  await page.join('sample-room');
+  expect(page.currentRoom?.id).toBe('sample-room');
+  await page.leave();
+  expect(page.currentRoom).toBeUndefined();
+  page.title = 'Mi sala';
+  await page.create();
+  expect(page.title).toBe('');
+  expect(page.currentRoom).toBeDefined();
+  const list = jest.spyOn(container.get(IMatchmakingService), 'list').mockRejectedValueOnce(new Error('Sin conexion'));
+  await page.refresh();
+  expect(page.error).toBe('Sin conexion');
+  await page.refresh();
+  expect(page.error).toBe('');
+  page.busy = true;
+  const calls = list.mock.calls.length;
+  await page.refresh();
+  expect(list).toHaveBeenCalledTimes(calls);
+  container.dispose();
+});
