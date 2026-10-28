@@ -18,11 +18,11 @@ Client ID, Audience, URL de la API y callbacks. Por defecto se usa `BATTLEHUB_AU
 El modo `auth0` permite acceder al perfil, catálogo y salas reales en `/matches`.
 El modo `mock` conserva las salas de demostración y el juego demo.
 
-## Versiones (ADR-003)
+## Versiones (cierre oficial de etapa 2)
 
 | Herramienta | Versión |
 |---|---|
-| Node.js | 24 LTS (`>=24.11.0 <25`, ver `.nvmrc`) |
+| Node.js | 22 LTS (`>=22 <23`, ver `.nvmrc`) |
 | `aurelia` y `@aurelia/*` | `2.0.0-rc.2` exacta |
 | Webpack | 5 |
 
@@ -188,7 +188,7 @@ Shell queda en `http://localhost:4000` en modo de prueba. Este Compose levanta s
 Profile, Matchmaking, juegos y sus bases de datos se despliegan por separado. No hay una
 base de datos propia de Shell. Para detenerlo: `docker compose down`.
 
-La imagen tiene una etapa de compilacion y otra de ejecucion, con Node 24 y usuario no root.
+La imagen tiene una etapa de compilacion y otra de ejecucion, con Node 22 y usuario no root.
 Sirve las rutas de la SPA, los recursos compilados y `GET /health`. En Railway escucha en
 `0.0.0.0` y usa `PORT`; `railway.json` configura Docker y la comprobacion de salud.
 

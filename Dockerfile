@@ -1,12 +1,12 @@
 # Dos etapas: solo los archivos compilados y el servidor llegan a la imagen final.
-FROM node:24.11.0-alpine AS build
+FROM node:22.23.4-alpine AS build
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
 COPY . .
 RUN npm run build
 
-FROM node:24.11.0-alpine AS runtime
+FROM node:22.23.4-alpine AS runtime
 ENV NODE_ENV=production PORT=8080 BATTLEHUB_AUTH_MODE=mock
 WORKDIR /app
 COPY --from=build --chown=node:node /app/dist ./dist

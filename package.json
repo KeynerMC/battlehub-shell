@@ -9,7 +9,7 @@
   },
   "license": "UNLICENSED",
   "engines": {
-    "node": ">=24.11.0 <25"
+    "node": ">=22 <23"
   },
   "dependencies": {
     "@aurelia/router": "2.0.0-rc.2",
@@ -55,7 +55,7 @@
     "typecheck": "node node_modules/typescript/bin/tsc --noEmit",
     "pretest": "npm run lint",
     "start": "webpack serve",
-    "build": "webpack --env production",
+    "build": "webpack --env production --fail-on-warnings",
     "analyze": "webpack --env production --analyze",
     "test": "jest",
     "serve": "node deploy/server.mjs",

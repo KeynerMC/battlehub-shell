@@ -31,14 +31,11 @@ module.exports = function(env, { analyze }) {
     mode: production ? 'production' : 'development',
     devtool: production ? undefined : 'eval-source-map',
     optimization: {
+      splitChunks: { chunks: 'all', maxSize: 200 * 1024 },
       minimizer: [
         new TerserPlugin({
           terserOptions: {
-            // Terser fast minify mode
-            // https://github.com/terser-js/terser#terser-fast-minify-mode
-            // It's a good balance on size and speed to turn off compress.
-            // Also bypass some terser bug.
-            compress: false
+            compress: true
           },
         }),
       ],
