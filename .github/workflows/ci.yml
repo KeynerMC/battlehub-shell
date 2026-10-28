@@ -1,24 +1,32 @@
-# Pipeline de CI del Shell (Equipo 3).
-# Etapas según 05-cicd-testing-commits.md; versión de Node según ADR-003 (Node 24 LTS, ver .nvmrc).
-name: CI - Frontend
+﻿name: CI
 
 on:
   pull_request:
     branches: [main]
+    paths-ignore: ['docs/**', '**/*.md']
   push:
     branches: [main]
+    paths-ignore: ['docs/**', '**/*.md']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build-and-test:
     name: build-and-test
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    permissions:
+      contents: read
+      pull-requests: write
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node (versión de .nvmrc)
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
           cache: npm
@@ -26,79 +34,92 @@ jobs:
             package-lock.json
             poc/demo-game/package-lock.json
             e2e/package-lock.json
-
       - name: Install
         run: npm ci
-
+      - name: Typecheck
+        run: npm run typecheck
       - name: Lint
         run: npm run lint
-
-      - name: Build
+      - name: Build without warnings
         run: npm run build
-
-      - name: Unit tests
-        run: npx jest --ci
-
-      - name: Production server tests
+      - name: Unit tests and coverage
+        id: unit
+        continue-on-error: true
+        run: npm test -- --ci --runInBand
+      - name: Coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: coverage/
+          if-no-files-found: ignore
+      - name: Comment coverage on PR
+        if: always() && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('node:fs');
+            const marker = '<!-- battlehub-shell-coverage -->';
+            const path = 'coverage/coverage-summary.json';
+            let body = `${marker}\nNo se pudo generar la cobertura. Revisa el resultado de las pruebas.`;
+            if (fs.existsSync(path)) {
+              const total = JSON.parse(fs.readFileSync(path, 'utf8')).total;
+              const passed = total.lines.pct >= 85 && total.statements.pct >= 85;
+              body = `${marker}\nCobertura de Shell\n\n| Medida | Porcentaje |\n| --- | --- |\n| Lineas | ${total.lines.pct}% |\n| Sentencias | ${total.statements.pct}% |\n| Funciones | ${total.functions.pct}% |\n| Ramas | ${total.branches.pct}% |\n\nMinimo exigido: 85% en lineas y sentencias. ${passed ? 'Cumple.' : 'No cumple.'}`;
+            }
+            const issue_number = context.issue.number;
+            const comments = await github.paginate(github.rest.issues.listComments, { ...context.repo, issue_number });
+            const existing = comments.find(comment => comment.user.type === 'Bot' && comment.body?.startsWith(marker));
+            if (existing) await github.rest.issues.updateComment({ ...context.repo, comment_id: existing.id, body });
+            else await github.rest.issues.createComment({ ...context.repo, issue_number, body });
+      - name: Enforce test and coverage result
+        if: always() && steps.unit.outcome != 'success'
+        run: exit 1
+      - name: Production server integration tests
         run: npm run test:server
-
-      - name: Install demo dependencies
-        run: npm ci
-        working-directory: poc/demo-game
-
-      - name: Install E2E dependencies
-        run: npm ci
+      - name: Install browser projects
+        run: |
+          npm ci --prefix poc/demo-game
+          npm ci --prefix e2e
+      - name: Install Chromium
         working-directory: e2e
-
-      - name: Install Chromium and system dependencies
         run: npx playwright install --with-deps chromium
-        working-directory: e2e
-
       - name: Browser integration tests
-        run: npm test
         working-directory: e2e
-
-      - name: Upload E2E failure evidence
+        run: npm test
+      - name: Browser failure evidence
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: e2e-failure-evidence
+          name: browser-failures
           path: e2e/test-results/
           if-no-files-found: ignore
-          retention-days: 7
 
   docker:
-    name: Docker build and smoke test
+    name: docker
+    needs: build-and-test
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    needs: build-and-test
+    env:
+      BATTLEHUB_AUTH_MODE: auth0
+      AUTH0_DOMAIN: tenant.example.com
+      AUTH0_CLIENT_ID: ci-public-placeholder
+      AUTH0_AUDIENCE: https://api.example.com/profile
+      PROFILE_SERVICE_URL: https://profile.example.com
+      MATCHMAKING_SERVICE_URL: https://matches.example.com
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Build image without secrets
-        run: docker build --tag battlehub-shell:ci .
-
-      - name: Start preview container
-        run: docker run --detach --name shell-smoke --env PORT=9090 --env BATTLEHUB_AUTH_MODE=mock --publish 127.0.0.1:4000:9090 battlehub-shell:ci
-
-      - name: Check health, public config and navigation
+      - uses: actions/checkout@v4
+      - name: Build and start compose
+        run: docker compose up --build --detach --wait --wait-timeout 90
+      - name: Check HTTP and unprivileged user
         run: |
-          for attempt in $(seq 1 30); do
-            if curl --fail --silent http://localhost:4000/health; then
-              break
-            fi
-            sleep 1
-          done
           curl --fail --silent http://localhost:4000/health | grep -q ok
-          curl --fail --silent http://localhost:4000/shell-config.js | grep -q BATTLEHUB_AUTH_MODE
+          curl --fail --silent http://localhost:4000/shell-config.js | grep -q AUTH0_CLIENT_ID
           curl --fail --silent http://localhost:4000/catalog | grep -q '<my-app>'
-          test "$(docker exec shell-smoke id -u)" != "0"
-
-      - name: Container logs
+          test "$(docker compose exec -T shell id -u)" != "0"
+      - name: Logs
         if: failure()
-        run: docker logs shell-smoke
-
-      - name: Stop container
+        run: docker compose logs
+      - name: Stop compose
         if: always()
-        run: docker rm --force shell-smoke
+        run: docker compose down
