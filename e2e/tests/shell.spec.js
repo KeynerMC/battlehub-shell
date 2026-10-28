@@ -28,6 +28,14 @@ test('sesión, perfil, catálogo, sala, juego y salida', async ({ page }) => {
   const roomId = (await startLink.getAttribute('href')).split('/').pop();
   await startLink.click();
   await expect(page.getByTestId('game-state')).toHaveText('running');
+  const viewport = await page.evaluate(() => {
+    const host = document.querySelector('game-host');
+    return { pageX: document.documentElement.scrollWidth <= innerWidth,
+      pageY: document.documentElement.scrollHeight <= innerHeight,
+      gameX: host.scrollWidth <= host.clientWidth, gameY: host.scrollHeight <= host.clientHeight };
+  });
+  const layout = await page.evaluate(() => [...document.querySelectorAll('header, main, main > *, section, game-host, .game-area, footer')].map(el => ({ tag: el.tagName, className: el.className, height: el.getBoundingClientRect().height, display: getComputedStyle(el).display })));
+  expect(viewport, JSON.stringify(layout)).toEqual({ pageX: true, pageY: true, gameX: true, gameY: true });
   await expect(page.locator('.demo-game')).toContainText(roomId);
   await expect(page.locator('.demo-game')).toContainText('Ana E2E');
   await page.getByTestId('click-btn').click();

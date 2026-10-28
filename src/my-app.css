@@ -1142,8 +1142,8 @@ summary {
     margin-top: 10px;
   }
 
-  .game-area:has(au-compose) {
-    min-width: 1024px;
+    .game-area[data-game-active="true"] {
+      min-width: 0;
     max-width: 1440px;
     min-height: 700px;
     padding: 24px;
@@ -1500,3 +1500,51 @@ summary {
     grid-template-columns: 1fr;
   }
 }
+
+@media (width >= 1366px) and (height >= 768px) {
+  .shell-content:has(game-host .game-area[data-game-active="true"]) {
+    min-height: 0;
+    padding: 12px 24px;
+  }
+
+  .shell-content:has(game-host .game-area[data-game-active="true"]) ~ .shell-footer {
+    display: none;
+  }
+
+  .shell-content section:has(> game-host .game-area[data-game-active="true"]) {
+    display: flex;
+    height: calc(100dvh - 104px);
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .shell-content section:has(> game-host .game-area[data-game-active="true"]) > :not(game-host, .play-toolbar, .game-section-heading, .action-row, .alert-error) {
+    display: none;
+  }
+
+  .shell-content section:has(> game-host .game-area[data-game-active="true"]) > game-host {
+    min-height: 0;
+    flex: 1;
+  }
+
+  .shell-content section:has(> game-host .game-area[data-game-active="true"]) .play-toolbar {
+    margin: 0;
+    padding: 12px;
+  }
+
+  .shell-content section:has(> game-host .game-area[data-game-active="true"]) .game-section-heading :is(h1, h2) {
+    margin: 0;
+    font-size: 22px;
+  }
+
+  .shell-content section:has(> game-host .game-area[data-game-active="true"]) .game-section-heading p {
+    display: none;
+  }
+
+  .shell-content game-host .game-area[data-game-active="true"] {
+    height: 100%;
+    min-height: 0;
+    padding: 12px;
+  }
+}
+

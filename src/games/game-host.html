@@ -1,4 +1,4 @@
-<div class="game-area">
+<div class="game-area" data-game-active.bind="component ? 'true' : 'false'">
   <div if.bind="status === 'loading'" class="empty-state" data-testid="loading" role="status">Cargando juego… (intento ${attempt})</div>
 
   <div if.bind="status === 'error'" class="game-error" data-testid="game-error">
