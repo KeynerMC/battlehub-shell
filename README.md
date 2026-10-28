@@ -146,18 +146,20 @@ oficial. No cambia el estado de los demás participantes ni inicia una partida m
 ```text
 /src                → código fuente del Shell
 /src/games          → contrato, registro, carga y ciclo de vida de juegos
+/src/server         -> servidor HTTP de produccion
+/tests/integration  -> pruebas HTTP y de navegador
 /src/pages/play     → pantalla de integración con contexto simulado
 /config             → registro de remotes por ambiente
 /tooling            → configuración de dependencias compartidas
-/test               → pruebas unitarias
+/tests/unit         → pruebas unitarias
 /poc                → prueba de concepto del ADR-003 (Module Federation)
 /.github/workflows  → pipeline de CI de la aplicación principal
 ```
 
 ## Pruebas de navegador
 
-Las pruebas del Shell principal están en `e2e/`, separadas de `poc/e2e/`.
-Consulta [las instrucciones E2E](e2e/README.md) para ejecutar el recorrido de sesión,
+Las pruebas del Shell principal están en `tests/integration/browser/`, separadas de `poc/e2e/`.
+Consulta [las instrucciones E2E](tests/integration/browser/README.md) para ejecutar el recorrido de sesión,
 perfil, catálogo, sala, demo y salida, y la recuperación ante un remote inaccesible.
 Requieren Chromium de Playwright. El job `build-and-test` también las ejecuta en cada
 Pull Request hacia `main` y en los pushes a `main`, después de lint, build y pruebas unitarias.
@@ -197,7 +199,7 @@ Sirve las rutas de la SPA, los recursos compilados y `GET /health`. En Railway e
 
 ### Configuracion publica al iniciar
 
-El servidor `deploy/server.mjs` toma estas variables cuando arranca:
+El servidor `src/server/server.mjs` toma estas variables cuando arranca:
 
 | Variable | Uso |
 | --- | --- |

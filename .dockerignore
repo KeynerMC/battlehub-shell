@@ -19,3 +19,5 @@ e2e
 test
 test-results
 playwright-report
+
+tests
