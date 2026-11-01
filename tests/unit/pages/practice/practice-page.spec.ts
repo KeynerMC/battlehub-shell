@@ -57,7 +57,7 @@ describe('practica sin salas ni resultados', () => {
     await auth.signIn('Ana');
     await page.canLoad({ gameType: 'typing' });
     profiles.getPermissions.mockResolvedValue([]);
-    await page.start();
+    await page.onRetry();
     expect(host.load).not.toHaveBeenCalled();
     expect(host.exit).toHaveBeenCalled();
     expect(page.error).toContain('acceso');

@@ -15,6 +15,22 @@ async function createHost() {
 }
 
 describe('GameHost', () => {
+  it('delega el reintento a la pagina para comprobar el acceso antes de cargar', async () => {
+    const host = await createHost();
+    host.onRetry = jest.fn().mockResolvedValue(undefined);
+    await host.retry();
+    expect(host.onRetry).toHaveBeenCalledTimes(1);
+    expect(loadGameModule).not.toHaveBeenCalled();
+  });
+
+  it('conserva el reintento del host cuando la pagina no define un callback', async () => {
+    const host = await createHost();
+    jest.mocked(loadGameModule).mockResolvedValue(null);
+    await host.retry();
+    expect(loadGameModule).toHaveBeenCalledWith(context.gameType);
+    expect(host.status).toBe('error');
+  });
+
   beforeEach(() => {
     jest.mocked(loadGameModule).mockReset();
     jest.spyOn(console, 'error').mockImplementation(() => {});

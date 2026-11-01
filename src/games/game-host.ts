@@ -13,6 +13,7 @@ const AUTO_RETRY_DELAYS_MS = [1_000, 2_000]; // 2 reintentos automáticos (total
 export class GameHost {
   @bindable public context!: GameLaunchContext;
   @bindable public onExit?: () => void;
+  @bindable public onRetry?: () => Promise<void>;
 
   public status: 'idle' | 'loading' | 'running' | 'paused' | 'error' = 'idle';
   public attempt = 0;
@@ -23,6 +24,11 @@ export class GameHost {
   private operation = 0;
   private transitioning = false;
   private readonly disposals = new WeakMap<GameModule, Promise<void>>();
+
+  public async retry(): Promise<void> {
+    if (this.onRetry) await this.onRetry();
+    else await this.load();
+  }
 
   public async load(): Promise<void> {
     if (!this.context || this.status === 'loading' || this.component) return;

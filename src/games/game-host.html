@@ -4,7 +4,7 @@
   <div if.bind="status === 'error'" class="game-error" data-testid="game-error">
     <h3>No se pudo cargar el juego</h3>
     <details><summary>Detalles del error</summary><p>Código: <strong data-testid="error-code">${error.code}</strong></p><p>${error.message}</p></details>
-    <button if.bind="error.retryable" data-testid="retry-btn" click.trigger="load()">Reintentar</button>
+    <button if.bind="error.retryable" data-testid="retry-btn" click.trigger="retry()">Reintentar</button>
     <button data-testid="lobby-btn" click.trigger="exit()">Volver al lobby</button>
   </div>
 

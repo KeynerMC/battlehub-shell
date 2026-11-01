@@ -38,6 +38,8 @@ export class PracticePage {
 
   public async attached(): Promise<void> { await this.start(); }
 
+  public onRetry = (): Promise<void> => this.start();
+
   public async start(): Promise<void> {
     if (!this.active || this.busy || !this.host || !this.context) return;
     const user = this.auth.user;
