@@ -171,11 +171,10 @@ y conserva las evidencias disponibles durante 7 días como `e2e-failure-evidence
 La integración real con el Equipo 2 se documenta en [Salas y Matchmaking](docs/matchmaking-integration.md).
 La nueva ruta es `/matches`; requiere `MATCHMAKING_SERVICE_URL`, MongoDB y ambos servicios en ejecución.
 
-La [integración local con Typing](docs/typing-integration.md) registra su remote en 4001, entrega tokens de usuario para su propia audiencia y conserva la vista de resultados al finalizar. El demo usa ahora 4004. La URL desplegada de Typing está pendiente.
-
-La [integración local de Trivia](docs/trivia-integration.md) registra el remote en 4002, usa `AUTH0_TRIVIA_AUDIENCE` y entrega tokens separados para jugar y validar la sala. La copia de Trivia tiene API/hub, pantalla multijugador, resultados y cola de finalización preparados. Quedan por confirmar el M2M, su mapa en Matchmaking y la prueba conjunta con Auth0 real; los cambios siguen locales.
-
-La [preparación de Memory](docs/memory-integration.md) registra el remote en 4003, añade `AUTH0_MEMORY_AUDIENCE`, autorización y proveedores de tokens, y limita esta versión a dos jugadores. La copia del Equipo 6 todavía necesita usar esos proveedores, autenticar su API/hub, validar la sala y avisar a Matchmaking. La guía detalla las rutas de sus pendientes y la configuración de Auth0.
+Typing, Trivia y Memory usan el contrato por eventos descrito abajo. Las guias historicas
+que mencionan audiences por juego, proveedores de tokens o M2M de los juegos no describen
+el flujo vigente. Shell conserva el login y las llamadas a Profile y Matchmaking; los
+modulos de juegos no reciben la sesion ni llaman a esos servicios.
 
 - Commits en formato semántico (`feat:`, `fix:`, `docs:`, `test:`, `chore:`, `ci:`...).
 - `main` protegida: todo cambio entra por Pull Request con CI en verde y al menos 1 aprobación.
@@ -260,3 +259,89 @@ con cada equipo; el estado del catalogo no certifica que un remote ya soporte pr
 
 `npm run typecheck` ejecuta el compilador local. Las pruebas exigen al menos 85 % de
 lineas y sentencias globales, sin excluir archivos de produccion del calculo.
+
+## Contrato de integracion con los juegos
+
+Este contrato corresponde a la rama `fix/login-unico-juegos` (PR #6); no implica que ya
+este integrado en `main`. Los tipos ejecutables estan en
+[`game-contracts.ts`](src/games/game-contracts.ts), los eventos en
+[`game-events.ts`](src/games/game-events.ts) y su adaptacion en
+[`game-host.ts`](src/games/game-host.ts). Los cambios incompatibles deben coordinarse
+con Typing, Trivia y Memory antes del merge y actualizar tipos, README y pruebas juntos.
+
+### Contexto y ciclo de vida
+
+Una partida normal recibe:
+
+```ts
+{
+  matchId: 'id-real-de-la-partida',
+  gameType: 'memory', // typing o trivia para sus respectivos modulos
+  currentUser: { id: 'sub-del-usuario', displayName: 'Nombre visible' },
+  events: new EventTarget()
+}
+```
+
+La practica recibe los mismos `gameType`, `currentUser` y `events`, con
+`mode: 'practice'` y **sin `matchId`**. La ausencia de `mode` corresponde a partida normal.
+No crear IDs ficticios para practica. `currentUser` describe solo al usuario actual y
+no acredita identidad ante un servidor; no es una lista de participantes.
+
+No se entregan bearer, secretos ni proveedores de tokens. El canal `events` siempre
+se crea en las rutas integradas; el tipo de partida conserva su caracter opcional por
+compatibilidad con el demo. Su ausencia no autoriza a solicitar tokens.
+
+El modulo implementa estas operaciones asincronas:
+
+```ts
+initialize(context): Promise<void>;
+start(): Promise<void>;
+pause(): Promise<void>;
+dispose(): Promise<void>;
+```
+
+El host inicializa y monta el componente, emite `battlehub:game-start`, adapta esa
+orden a `start()` y emite `battlehub:game-started` tras completarlo. El remote no debe
+volver a llamar `start()` mediante otro listener de la misma orden. Reanudar llama a
+`start()` nuevamente, por lo que debe soportarlo sin duplicar conexiones o temporizadores.
+`dispose()` limpia listeners, conexiones y temporizadores al salir o cancelar la carga.
+
+### Finalizacion automatica
+
+Solo al terminar una partida normal, el juego emite una vez:
+
+```ts
+context.events.dispatchEvent(new CustomEvent('battlehub:game-finished', {
+  detail: { matchId: context.matchId, gameType: context.gameType }
+}));
+```
+
+Shell correlaciona el evento con la partida, el juego y la sesion activos, verifica el
+estado y pertenencia mediante Matchmaking, y solicita automaticamente
+`POST /api/matches/{matchId}/finish` con el bearer del usuario. Matchmaking autoriza la
+operacion en servidor. No hay un paso manual normal ni una llamada del juego a Matchmaking.
+Salir del juego no equivale a finalizar la partida. Los errores de notificacion se muestran
+con una opcion de reintento; los eventos tardios no deben terminar otra partida.
+
+`isDraw`, `winnerUserId` y `players` pueden acompanar el evento, pero Shell actualmente
+los ignora: no muestra, acredita, guarda ni envia esos resultados a Matchmaking. Cualquier
+uso futuro requiere acordar tipos, significado y validaciones; anadirlos al evento no
+implementa su persistencia.
+
+En practica no emitir el fin de partida normal, crear salas ni persistir resultados.
+El juego puede mostrar el resultado localmente. Shell comprueba catalogo, permiso y sesion
+al entrar e iniciar o reintentar; el boton tambien requiere un remote registrado.
+La cache de Profile dura hasta un minuto entre lecturas y no promete revocacion instantanea
+en un juego abierto. Estas comprobaciones de interfaz no sustituyen autorizacion en servidor.
+
+### Area de juego y evidencia
+
+A partir de 1366x768, el host activo usa `data-game-active="true"` para compactar el
+contenido de Shell y asignar al juego la altura disponible. En esa vista, `min-height: 0`
+es intencional para el layout flex; no significa que su altura calculada sea cero.
+No imponer 700 px adicionales al encabezado ni ocultar controles para evitar scroll.
+El remote debe adaptar su elemento raiz al espacio disponible.
+
+Las pruebas de navegador verifican el demo de Module Federation. La ausencia de scroll
+con Memory, Trivia y Typing reales y el recorrido completo con sus backends necesitan
+pruebas conjuntas; no se consideran demostrados por el demo ni por el catalogo.
