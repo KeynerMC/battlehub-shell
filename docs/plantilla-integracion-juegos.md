@@ -99,7 +99,7 @@ Al ejecutarse dentro del Shell, las llamadas del navegador salen desde el origen
 
 El juego renderiza dentro del espacio asignado. Evitar estilos globales sobre `body`, `html` o la navegación. Usar clases con prefijo del juego, conservar header/footer y comprobar la resolución mínima de 1366 × 768 del contrato.
 
-Cerrar el microfrontend libera recursos locales; **no finaliza la partida en Matchmaking**. Nuestra copia de integración de Matchmaking implementa ahora `POST /api/matches/{matchId}/finish`, llamado por el backend del juego con su token M2M y `matches.finish`. Esto no confirma que el Equipo 2 lo haya publicado. Coordinar la versión del backend y el callback con ese equipo y el Tech Lead; ADR-004 sigue siendo la referencia propuesta.
+Cerrar el microfrontend libera recursos locales; **no finaliza la partida en Matchmaking**. El juego emite `battlehub:game-finished` mediante `context.events`; Shell valida la partida, llama `notifyFinished` y consulta Matchmaking de nuevo. Solo confirma la finalización cuando el servidor devuelve `Finished` y conserva el resultado visible hasta el cierre manual.
 
 ## 6. Plantilla de entrega al Equipo 3
 

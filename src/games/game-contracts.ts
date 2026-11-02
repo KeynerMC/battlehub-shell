@@ -3,13 +3,22 @@ export interface GameContext {
   matchId: string;
   gameType: 'typing' | 'trivia' | 'memory' | string;
   currentUser: { id: string; displayName: string };
-  // Extensión local de autorización para juegos; no modifica el contrato central.
-  getAccessToken?: () => Promise<string>;
-  getMatchmakingAccessToken?: () => Promise<string>;
+  // Canal local por partida. No contiene tokens ni acredita identidad ante el servidor.
+  events?: EventTarget;
 }
 
+// Practica no representa una sala ni una partida persistida.
+export interface PracticeContext {
+  mode: 'practice';
+  matchId?: never;
+  gameType: string;
+  currentUser: { id: string; displayName: string };
+  events: EventTarget;
+}
+export type GameLaunchContext = GameContext | PracticeContext;
+
 export interface GameModule {
-  initialize(context: GameContext): Promise<void>;
+  initialize(context: GameLaunchContext): Promise<void>;
   start(): Promise<void>;
   pause(): Promise<void>;
   dispose(): Promise<void>;

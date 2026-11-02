@@ -71,7 +71,7 @@ export class RemoteMatchmakingService {
   public async action(id: string, action: 'join' | 'leave' | 'start' | 'cancel'): Promise<RemoteRoom> {
     return parseRoom(await this.request(`/${encodeURIComponent(id)}${action === 'cancel' ? '' : '/' + action}`, action === 'cancel' ? 'DELETE' : 'POST'));
   }
-  public async finish(id: string): Promise<void> {
+  public async notifyFinished(id: string): Promise<void> {
     await this.request(`/${encodeURIComponent(id)}/finish`, 'POST');
   }
   public connection(changed: () => void, status: (message: string) => void): HubConnection {
