@@ -31,6 +31,24 @@ describe('Matchmaking real', () => {
         expect.objectContaining({ method: action === 'cancel' ? 'DELETE' : 'POST' }));
     }
   });
+  it('finaliza con bearer y acepta 204 sin leer JSON ni enviar body', async () => {
+    const { service, fetch, auth } = setup();
+    const json = jest.fn();
+    fetch.mockResolvedValue({ ok: true, status: 204, json });
+    await service.finish('room/1');
+    expect(auth.getAccessToken).toHaveBeenCalledTimes(1);
+    expect(fetch).toHaveBeenCalledWith('http://localhost:5211/api/matches/room%2F1/finish', expect.objectContaining({
+      method: 'POST', headers: { Authorization: 'Bearer test-token' },
+    }));
+    expect(fetch.mock.calls[0][1]).not.toHaveProperty('body');
+    expect(json).not.toHaveBeenCalled();
+  });
+  it('sigue leyendo las respuestas JSON de lista y detalle', async () => {
+    const { service, fetch } = setup();
+    fetch.mockResolvedValueOnce({ ok: true, json: async () => [room] });
+    expect(await service.list()).toEqual([room]);
+    expect(await service.get('1')).toEqual(room);
+  });
   it('descarta respuestas si cambió la sesión', async () => {
     const { service, fetch, auth } = setup();
     fetch.mockImplementation(async () => { auth.user = null; return { ok: true, json: async () => [room] }; });

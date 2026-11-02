@@ -45,9 +45,12 @@ export class MatchesPage {
   private refreshing = false;
   private refreshAgain = false;
   private entering?: string;
+  private readonly finishing = new Set<string>();
+  private readonly gameFinishedListener = (event: Event): void => { void this.finishGame(event); };
   public canLoad(): boolean | string { return this.auth.user ? this.auth.mode === 'auth0' ? true : 'lobby' : 'login'; }
   public async attached(): Promise<void> {
     this.active = true;
+    window.addEventListener('battlehub:game-finished', this.gameFinishedListener);
     try {
       const permissions = await this.profiles.getPermissions();
       if (!this.active) return;
@@ -195,8 +198,28 @@ export class MatchesPage {
     this.onGameExit();
   }
   public onGameExit = () => { this.context = undefined; this.gameFinished = false; };
+  private async finishGame(event: Event): Promise<void> {
+    if (!(event instanceof CustomEvent) || !event.detail || typeof event.detail !== 'object') return;
+    const { matchId, gameType } = event.detail as Record<string, unknown>;
+    const context = this.context;
+    const user = this.auth.user;
+    if (!this.active || !user || !context || typeof matchId !== 'string' || !matchId.trim() ||
+      typeof gameType !== 'string' || !gameType.trim() || matchId !== context.matchId ||
+      gameType !== context.gameType || this.finishing.has(matchId)) return;
+    this.finishing.add(matchId);
+    try {
+      await this.service.finish(matchId);
+      if (!this.active || this.auth.user !== user || this.context !== context) return;
+      this.gameFinished = true;
+      this.error = '';
+      await this.refresh();
+    } catch (error) {
+      if (this.active && this.auth.user === user && this.context === context) this.error = `No se pudo finalizar la partida. ${this.message(error)}`;
+    } finally { this.finishing.delete(matchId); }
+  }
   public async detaching(): Promise<void> {
     this.active = false;
+    window.removeEventListener('battlehub:game-finished', this.gameFinishedListener);
     clearInterval(this.timer);
     await this.connection?.stop();
   }

@@ -19,7 +19,8 @@ describe('Salas reales', () => {
     const rooms: RemoteRoom[] = [{ id: 'room', title: 'Sala de Ana', gameType: 'typing', createdBy: 'u', createdAt: '2026-10-02T00:00:00Z',
       currentPlayers: 2, maxPlayers: 2, status: 'Waiting', participants: [{ userId: 'u', displayName: 'Ana' }, { userId: 'v', displayName: 'Luis' }] }];
     const service = { configured: true, connection: () => connection, list: jest.fn().mockResolvedValue(rooms),
-      get: jest.fn().mockResolvedValue(rooms[0]), action: jest.fn().mockResolvedValue(rooms[0]), create: jest.fn().mockResolvedValue(rooms[0]) };
+      get: jest.fn().mockResolvedValue(rooms[0]), action: jest.fn().mockResolvedValue(rooms[0]), create: jest.fn().mockResolvedValue(rooms[0]),
+      finish: jest.fn().mockResolvedValue(undefined) };
     const auth = { mode: 'auth0', user: { id: 'u', displayName: 'Ana' }, getGameAccessToken: jest.fn().mockResolvedValue('typing-token'), getAccessToken: jest.fn().mockResolvedValue('room-token') };
     const registrations = [Registration.instance(IAuthService, auth),
       Registration.instance(IProfileService, { getPermissions: async () => ['matches.create', 'games.typing.play'] }),
@@ -104,6 +105,74 @@ describe('Salas reales', () => {
       expect(page.context?.matchId).toBe('room');
       page.onGameExit();
       expect(page.context).toBeUndefined();
+    } finally { await page.detaching(); container.dispose(); }
+  });
+  it('registra y elimina el mismo listener al entrar y salir', async () => {
+    const { page, container } = setup();
+    const add = jest.spyOn(window, 'addEventListener');
+    const remove = jest.spyOn(window, 'removeEventListener');
+    try {
+      await page.attached();
+      const listener = add.mock.calls.find(call => call[0] === 'battlehub:game-finished')?.[1];
+      expect(listener).toBeDefined();
+      await page.detaching();
+      expect(remove).toHaveBeenCalledWith('battlehub:game-finished', listener);
+    } finally { add.mockRestore(); remove.mockRestore(); container.dispose(); }
+  });
+  it('ignora eventos inválidos o ajenos a la partida y requiere sesión activa', async () => {
+    const { page, service, container, auth } = setup();
+    try {
+      await page.attached();
+      page.context = { matchId: 'room', gameType: 'typing', currentUser: { id: 'u', displayName: 'Ana' } };
+      window.dispatchEvent(new Event('battlehub:game-finished'));
+      for (const detail of [null, {}, { matchId: '', gameType: 'typing' }, { matchId: 'other', gameType: 'typing' },
+        { matchId: 'room', gameType: 'trivia' }, { matchId: 'room', gameType: ' ' }]) {
+        window.dispatchEvent(new CustomEvent('battlehub:game-finished', { detail }));
+      }
+      auth.user = null as unknown as typeof auth.user;
+      window.dispatchEvent(new CustomEvent('battlehub:game-finished', { detail: { matchId: 'room', gameType: 'typing' } }));
+      expect(service.finish).not.toHaveBeenCalled();
+    } finally { await page.detaching(); container.dispose(); }
+  });
+  it('finaliza una sola vez en paralelo, conserva el juego y refresca la sala', async () => {
+    const { page, service, container } = setup();
+    let complete!: () => void;
+    service.finish.mockReturnValue(new Promise<void>(resolve => { complete = resolve; }));
+    try {
+      await page.attached();
+      const context = { matchId: 'room', gameType: 'typing', currentUser: { id: 'u', displayName: 'Ana' } };
+      page.context = context;
+      const exit = jest.fn();
+      page.host = { exit } as unknown as GameHost;
+      service.list.mockClear();
+      const emit = () => window.dispatchEvent(new CustomEvent('battlehub:game-finished', { detail: { matchId: 'room', gameType: 'typing' } }));
+      emit(); emit();
+      expect(service.finish).toHaveBeenCalledTimes(1);
+      expect(service.finish).toHaveBeenCalledWith('room');
+      complete();
+      await new Promise(resolve => setTimeout(resolve, 0));
+      expect(page.gameFinished).toBe(true);
+      expect(page.context).toBe(context);
+      expect(exit).not.toHaveBeenCalled();
+      expect(service.list).toHaveBeenCalled();
+    } finally { await page.detaching(); container.dispose(); }
+  });
+  it('mantiene el juego y permite reintentar si falla finish', async () => {
+    const { page, service, container } = setup();
+    service.finish.mockRejectedValueOnce(new Error('Servicio no disponible'));
+    try {
+      await page.attached();
+      page.context = { matchId: 'room', gameType: 'typing', currentUser: { id: 'u', displayName: 'Ana' } };
+      const emit = () => window.dispatchEvent(new CustomEvent('battlehub:game-finished', { detail: { matchId: 'room', gameType: 'typing' } }));
+      emit();
+      await new Promise(resolve => setTimeout(resolve, 0));
+      expect(page.context?.matchId).toBe('room');
+      expect(page.gameFinished).toBe(false);
+      expect(page.error).toContain('No se pudo finalizar la partida');
+      emit();
+      await new Promise(resolve => setTimeout(resolve, 0));
+      expect(service.finish).toHaveBeenCalledTimes(2);
+      expect(page.gameFinished).toBe(true);
     } finally { await page.detaching(); container.dispose(); }
   });
   it('cierra el juego cuando la sala se cancela', async () => {
