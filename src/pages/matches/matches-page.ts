@@ -192,6 +192,7 @@ export class MatchesPage {
     const context: GameContext = {
       matchId: current.id, gameType: current.gameType,
       currentUser: { id: user.id, displayName: user.displayName }, events: new EventTarget(),
+      participants: current.participants.map(({ userId, displayName }) => ({ userId, displayName })),
     };
     const finished = (event: Event) => {
       if (!this.active || this.auth.user !== user || this.context !== context

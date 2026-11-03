@@ -76,9 +76,29 @@ describe('Salas reales', () => {
       expect(page.context?.currentUser.id).toBe('u');
       expect(page.context?.gameType).toBe(gameType);
       expect(page.context?.events).toBeInstanceOf(EventTarget);
+      expect(page.context?.participants).toEqual(rooms[0].participants);
+      expect(page.context?.participants).not.toBe(rooms[0].participants);
+      expect(page.context?.participants?.[0]).not.toBe(rooms[0].participants[0]);
       expect(page.context).not.toHaveProperty('getAccessToken');
       expect(page.context).not.toHaveProperty('getMatchmakingAccessToken');
       expect(auth.getAccessToken).not.toHaveBeenCalled();
+    } finally { await page.detaching(); container.dispose(); }
+  });
+  it('entrega los participantes del detalle actualizado sin compartir objetos con la sala', async () => {
+    const { page, rooms, service, container } = setup();
+    rooms[0].status = 'Started'; rooms[0].gameType = 'trivia';
+    const participants = [{ userId: 'u', displayName: 'Ana actualizada' }, { userId: 'nuevo', displayName: 'Nuevo' }];
+    service.get.mockResolvedValue({ ...rooms[0], participants });
+    jest.mocked(loadRemotesConfig).mockResolvedValue({ trivia: { scope: 'triviaGame', url: 'http://localhost:4002/remoteEntry.js', module: './GameModule' } });
+    try {
+      await page.attached();
+      expect(page.context?.participants).toEqual(participants);
+      expect(page.context?.participants?.some(p => p.userId === page.context?.currentUser.id)).toBe(true);
+      page.context!.participants![0].displayName = 'Cambio del remote';
+      page.context!.participants!.push({ userId: 'inventado', displayName: 'Local' });
+      expect(participants).toHaveLength(2);
+      expect(participants[0].displayName).toBe('Ana actualizada');
+      expect(rooms[0].participants[1].userId).toBe('v');
     } finally { await page.detaching(); container.dispose(); }
   });
   it('conserva resultados cuando la sala finalizada deja de aparecer en la lista', async () => {

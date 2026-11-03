@@ -278,6 +278,10 @@ Una partida normal recibe:
   matchId: 'id-real-de-la-partida',
   gameType: 'memory', // typing o trivia para sus respectivos modulos
   currentUser: { id: 'sub-del-usuario', displayName: 'Nombre visible' },
+  participants: [
+    { userId: 'sub-del-usuario', displayName: 'Nombre visible' },
+    { userId: 'sub-del-otro-jugador', displayName: 'Otro jugador' }
+  ],
   events: new EventTarget()
 }
 ```
@@ -286,6 +290,14 @@ La practica recibe los mismos `gameType`, `currentUser` y `events`, con
 `mode: 'practice'` y **sin `matchId`**. La ausencia de `mode` corresponde a partida normal.
 No crear IDs ficticios para practica. `currentUser` describe solo al usuario actual y
 no acredita identidad ante un servidor; no es una lista de participantes.
+
+Las partidas integradas entregan siempre `participants` con todos los integrantes del
+detalle de sala consultado en Matchmaking, incluido el usuario actual. Cada elemento usa
+`userId` y `displayName`; `currentUser` conserva `id`. Shell copia la lista y sus objetos
+antes de entregarlos al remote. Es un snapshot de inicio, sin actualizacion automatica ni
+valor de credencial ante el backend del juego. El tipo conserva el campo opcional para
+los contextos demo antiguos. Practica no incluye ni exige participantes de una sala.
+Esta ampliacion debe comunicarse a Trivia, Memory y Typing antes del merge.
 
 No se entregan bearer, secretos ni proveedores de tokens. El canal `events` siempre
 se crea en las rutas integradas; el tipo de partida conserva su caracter opcional por
