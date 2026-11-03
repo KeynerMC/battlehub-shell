@@ -292,4 +292,42 @@ describe('Salas reales', () => {
     } finally { await page.detaching(); container.dispose(); }
   });
 
+  it('ignora otro tipo y eventos del contexto cerrado incluso tras reabrir', async () => {
+    const { page, rooms, container, service } = setup();
+    rooms[0].status = 'Started';
+    jest.mocked(loadRemotesConfig).mockResolvedValue({ typing: { scope: 'typingGame', url: 'http://localhost:4001/remoteEntry.js', module: './GameModule' } });
+    try {
+      await page.attached();
+      const oldEvents = page.context!.events!;
+      oldEvents.dispatchEvent(new CustomEvent(GAME_FINISHED, { detail: { matchId: 'room', gameType: 'trivia' } }));
+      page.onGameExit();
+      await page.openGame(rooms[0]);
+      oldEvents.dispatchEvent(new CustomEvent(GAME_FINISHED, { detail: { matchId: 'room', gameType: 'typing' } }));
+      await new Promise(resolve => setTimeout(resolve, 0));
+      expect(service.notifyFinished).not.toHaveBeenCalled();
+      expect(page.context?.events).not.toBe(oldEvents);
+    } finally { await page.detaching(); container.dispose(); }
+  });
+
+  it('mantiene el juego y permite reintentar si el GET posterior no confirma Finished', async () => {
+    const { page, rooms, container, service } = setup();
+    rooms[0].status = 'Started';
+    jest.mocked(loadRemotesConfig).mockResolvedValue({ typing: { scope: 'typingGame', url: 'http://localhost:4001/remoteEntry.js', module: './GameModule' } });
+    try {
+      await page.attached();
+      const context = page.context!;
+      context.events!.dispatchEvent(new CustomEvent(GAME_FINISHED, { detail: { matchId: 'room', gameType: 'typing' } }));
+      await new Promise(resolve => setTimeout(resolve, 0));
+      expect(page.context).toBe(context);
+      expect(page.gameFinished).toBe(false);
+      expect(page.finishPending).toBe(true);
+      rooms[0].status = 'Finished';
+      await page.notifyGameFinished();
+      expect(page.gameFinished).toBe(true);
+      expect(page.context).toBe(context);
+      context.events!.dispatchEvent(new CustomEvent(GAME_FINISHED, { detail: { matchId: 'room', gameType: 'typing' } }));
+      expect(service.notifyFinished).toHaveBeenCalledTimes(1);
+    } finally { await page.detaching(); container.dispose(); }
+  });
+
 });

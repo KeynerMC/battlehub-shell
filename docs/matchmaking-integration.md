@@ -34,14 +34,14 @@ SignalR notifica los cambios. El Shell recupera el estado mediante REST, renueva
 
 Cuando una partida comienza, el Shell entrega `matchId`, `gameType` y `currentUser` a GameHost. Si el juego no está registrado en `config/remotes.local.json`, muestra un aviso de disponibilidad.
 
-Typing está registrado en la configuración local y recibe además un proveedor opcional `getAccessToken`, como extensión local del contexto. Su token usa una audiencia independiente de Profile y Matchmaking. Consulta [la guía de Typing](typing-integration.md). Cuando la sala pasa a Finished, el Shell consulta su detalle y conserva el juego hasta que el usuario lo cierre, para permitir resultados e historial; una sala cancelada o eliminada cierra el juego.
+El contexto entrega `matchId`, `gameType`, `currentUser` y `events`, sin tokens. Cuando la sala pasa a Finished, Shell conserva el juego hasta que el usuario lo cierre; una sala cancelada o eliminada cierra el juego.
 
 `/lobby` y `/play` corresponden a la demostración en modo mock.
 
 ## Límites actuales
 
 - Cerrar el juego no finaliza la partida.
-- Nuestra copia local de Matchmaking implementa `/finish` para servicios M2M; falta confirmar su publicación por el Equipo 2. ADR-004 sigue siendo una propuesta y el Shell no llama ese endpoint.
+- El juego emite `battlehub:game-finished` en `context.events`. Shell valida la partida, llama `notifyFinished` con el bearer del usuario y vuelve a consultar Matchmaking. Solo confirma el fin cuando recibe `Finished`; ante un fallo permite reintentar y conserva el juego visible.
 - Los juegos requieren sus propios remotes, APIs y hubs.
 - La sesión única entre pestañas está pendiente.
 - El backend requiere un mecanismo de distribución de eventos para desplegar varias instancias de SignalR.

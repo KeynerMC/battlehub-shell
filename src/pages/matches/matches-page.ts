@@ -88,8 +88,7 @@ export class MatchesPage {
       this.rooms = [];
       this.games = [];
       this.canCreate = false;
-      this.context = undefined;
-      await this.host?.exit();
+      await this.closeGame();
       await this.connection?.stop();
       this.error = 'Vuelve a iniciar sesión para consultar las salas.';
       return;
@@ -106,7 +105,7 @@ export class MatchesPage {
         if (this.context && !this.gameFinished && !rooms.some(r => r.id === this.context?.matchId && r.status === 'Started' && this.isMember(r))) {
           try {
             const detail = await this.service.get(this.context.matchId);
-            if (!this.active) return;
+            if (!this.active || this.auth.user !== user) return;
             if (detail.status === 'Finished' && this.isMember(detail)) this.gameFinished = true;
             else if (detail.status !== 'Started' || !this.isMember(detail)) await this.closeGame();
           } catch (error) {

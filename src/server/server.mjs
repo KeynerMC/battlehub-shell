@@ -68,6 +68,7 @@ export function readRemotes(env) {
 export function createShellServer({ rootDir, env = process.env }) {
   const root = realpathSync(rootDir);
   if (!existsSync(resolve(root, 'index.html'))) throw new Error('Falta dist/index.html. Ejecuta npm run build.');
+  const canonicalRoot = realpath(root);
   const publicConfig = readPublicConfiguration(env);
   const remotes = readRemotes(env);
   const configScript = `window.__BATTLEHUB_CONFIG__ = ${JSON.stringify(publicConfig).replaceAll('<', '\\u003c')};`;
@@ -94,7 +95,7 @@ export function createShellServer({ rootDir, env = process.env }) {
     if (!extname(pathname)) file = resolve(root, 'index.html');
     try {
       const actual = await realpath(file);
-      const within = relative(root, actual);
+      const within = relative(await canonicalRoot, actual);
       if (within.startsWith('..') || isAbsolute(within)) { send(404, 'No encontrado'); return; }
       const type = mime[extname(actual)];
       if (!type) { send(404, 'No encontrado'); return; }

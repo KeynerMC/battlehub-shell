@@ -31,6 +31,24 @@ describe('Matchmaking real', () => {
         expect.objectContaining({ method: action === 'cancel' ? 'DELETE' : 'POST' }));
     }
   });
+  it('finaliza con bearer y acepta 204 sin leer JSON ni enviar body', async () => {
+    const { service, fetch, auth } = setup();
+    const json = jest.fn();
+    fetch.mockResolvedValue({ ok: true, status: 204, json });
+    await service.notifyFinished('room/1');
+    expect(auth.getAccessToken).toHaveBeenCalledTimes(1);
+    expect(fetch).toHaveBeenCalledWith('http://localhost:5211/api/matches/room%2F1/finish', expect.objectContaining({
+      method: 'POST', headers: { Authorization: 'Bearer test-token' },
+    }));
+    expect(fetch.mock.calls[0][1]).not.toHaveProperty('body');
+    expect(json).not.toHaveBeenCalled();
+  });
+  it('sigue leyendo las respuestas JSON de lista y detalle', async () => {
+    const { service, fetch } = setup();
+    fetch.mockResolvedValueOnce({ ok: true, json: async () => [room] });
+    expect(await service.list()).toEqual([room]);
+    expect(await service.get('1')).toEqual(room);
+  });
   it('descarta respuestas si cambió la sesión', async () => {
     const { service, fetch, auth } = setup();
     fetch.mockImplementation(async () => { auth.user = null; return { ok: true, json: async () => [room] }; });
@@ -49,16 +67,15 @@ describe('Matchmaking real', () => {
     const { auth } = setup();
     await expect(new RemoteMatchmakingService(auth as unknown as AuthService).list()).rejects.toThrow('MATCHMAKING_SERVICE_URL');
   });
-  it('notifica fin con el token del usuario, sin secreto ni resultados del navegador', async () => {
-    const { service, fetch } = setup();
-    fetch.mockResolvedValue({ ok: true, status: 204 });
-    await service.notifyFinished('room/1');
-    expect(fetch).toHaveBeenCalledWith('http://localhost:5211/api/matches/room%2F1/finish', expect.objectContaining({
-      method: 'POST', headers: { Authorization: 'Bearer test-token' },
-    }));
-    expect(fetch.mock.calls[0][1]).not.toHaveProperty('body');
-    fetch.mockResolvedValue({ ok: false, status: 403 });
-    await expect(service.notifyFinished('room/1')).rejects.toThrow('permiso');
+
+
+  it.each(['token', 'fetch', 'json'])('rechaza notifyFinished si cambia la sesion durante %s', async stage => {
+    const { service, fetch, auth } = setup();
+    if (stage === 'token') auth.getAccessToken.mockImplementation(async () => { auth.user = null; return 'token'; });
+    if (stage === 'fetch') fetch.mockImplementation(async () => { auth.user = null; return { ok: true, status: 204 }; });
+    if (stage === 'json') fetch.mockResolvedValue({ ok: true, status: 200, json: async () => { auth.user = null; return {}; } });
+    await expect(service.notifyFinished('room')).rejects.toThrow('sesi\u00f3n cambi\u00f3');
+    if (stage === 'token') expect(fetch).not.toHaveBeenCalled();
   });
 
 });

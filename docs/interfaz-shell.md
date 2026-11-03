@@ -15,7 +15,7 @@ La interfaz toma como referencia las cuatro pantallas de Visily entregadas para 
 
 Las cifras ficticias, rankings, amigos, torneos, desafíos diarios, salas privadas y acciones de espectador de los mockups no se incorporan como funciones disponibles. El resumen de salas es una consulta al entrar a Inicio, no un indicador global de jugadores conectados. Las actualizaciones en vivo pertenecen a la pantalla de salas reales.
 
-Los juegos se registran en la configuración existente de Module Federation. No se modifica GameContext, no se entrega un token a los juegos y no se incorpora el callback `/finish`. ADR-004 y ADR-007 siguen siendo propuestas en la documentación consultada. El rediseño no publica ni cambia los backends de otros equipos.
+Los juegos se registran en la configuración existente de Module Federation. GameContext proporciona `events` sin entregar tokens a los juegos; Shell procesa el evento de finalización y notifica a Matchmaking. ADR-004 y ADR-007 siguen siendo propuestas en la documentación consultada. El rediseño no publica ni cambia los backends de otros equipos.
 
 ## Verificación
 

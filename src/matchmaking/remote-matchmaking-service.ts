@@ -71,8 +71,6 @@ export class RemoteMatchmakingService {
   public async action(id: string, action: 'join' | 'leave' | 'start' | 'cancel'): Promise<RemoteRoom> {
     return parseRoom(await this.request(`/${encodeURIComponent(id)}${action === 'cancel' ? '' : '/' + action}`, action === 'cancel' ? 'DELETE' : 'POST'));
   }
-  // El backend debe autorizar esta notificacion del usuario y verificar el resultado.
-  // El endpoint actual M2M puede rechazarla: el Shell no suplanta un servicio.
   public async notifyFinished(id: string): Promise<void> {
     await this.request(`/${encodeURIComponent(id)}/finish`, 'POST');
   }
