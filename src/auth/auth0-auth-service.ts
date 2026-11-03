@@ -78,22 +78,6 @@ export class Auth0AuthService implements AuthService {
     }
   }
 
-  public async getGameAccessToken(gameType: string): Promise<string> {
-    if (!['typing', 'trivia', 'memory'].includes(gameType)) {
-      throw new Error('El Shell no dispone de autorización para este juego.');
-    }
-    const user = this.user;
-    const token = await this.getAccessToken();
-    const identity = await this.client.getUser();
-    if (this.user !== user || identity?.sub !== user?.id) {
-      this.user = null;
-      this.error = 'La sesión cambió. Vuelve a iniciar sesión antes de jugar.';
-      throw new Error(this.error);
-    }
-    if (!token) throw new Error('No se pudo obtener acceso al servicio.');
-    return token;
-  }
-
   public async signOut(): Promise<void> {
     try {
       await this.client.logout({ logoutParams: { returnTo: this.origin } });

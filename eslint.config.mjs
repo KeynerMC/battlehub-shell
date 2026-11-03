@@ -7,6 +7,10 @@ export default [
   eslint.configs.recommended,
   ...tseslint.configs.recommended,
   {
+    files: ['src/server/**/*.mjs', 'tests/integration/**/*.mjs', 'tests/integration/**/*.js'],
+    languageOptions: { globals: { ...globals.node, ...globals.browser }, sourceType: 'module' },
+  },
+  {
     files: ["**/*.ts"],
 
     languageOptions: {

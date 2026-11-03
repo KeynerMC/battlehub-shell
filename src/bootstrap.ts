@@ -21,7 +21,7 @@ await Aurelia.register(
   Registration.instance(IAuthService, auth),
   Registration.instance(IRemoteMatchmaking, new RemoteMatchmakingService(auth, config.matchmakingServiceUrl)),
   config.mode === 'auth0'
-    ? Registration.instance(IProfileService, new HttpProfileService(auth, config.profileServiceUrl!))
+    ? Registration.instance(IProfileService, new HttpProfileService(auth, config.profileServiceUrl!, config.profileAccessPath))
     : Registration.singleton(IProfileService, MockProfileService),
   Registration.singleton(IMatchmakingService, MockMatchmakingService),
 ).app(MyApp).start();
