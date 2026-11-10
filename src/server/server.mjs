@@ -4,7 +4,7 @@ import { existsSync, realpathSync } from 'node:fs';
 import { resolve, relative, extname, isAbsolute } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
-const publicKeys = ['AUTH0_DOMAIN', 'AUTH0_CLIENT_ID', 'AUTH0_AUDIENCE',
+const publicKeys = ['BATTLEHUB_DEPLOYMENT', 'AUTH0_DOMAIN', 'AUTH0_CLIENT_ID', 'AUTH0_AUDIENCE',
   'PROFILE_SERVICE_URL', 'MATCHMAKING_SERVICE_URL'];
 const mime = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8',
   '.css': 'text/css; charset=utf-8', '.json': 'application/json; charset=utf-8',
@@ -35,7 +35,7 @@ export function readPublicConfiguration(env) {
   }
   for (const key of publicKeys) if (env[key] !== undefined) config[key] = env[key].trim();
   if (config.BATTLEHUB_AUTH_MODE === 'auth0') {
-    for (const key of publicKeys) if (!config[key]) throw new Error(`Falta configurar ${key}.`);
+    for (const key of publicKeys.filter(key => key !== 'BATTLEHUB_DEPLOYMENT')) if (!config[key]) throw new Error(`Falta configurar ${key}.`);
     if (!/^[a-z0-9]+(?:[.-][a-z0-9-]+)+$/i.test(config.AUTH0_DOMAIN)) throw new Error('AUTH0_DOMAIN debe ser un hostname.');
     httpsUrl(config.PROFILE_SERVICE_URL, 'PROFILE_SERVICE_URL', true, env.BATTLEHUB_DEPLOYMENT === 'local');
     httpsUrl(config.MATCHMAKING_SERVICE_URL, 'MATCHMAKING_SERVICE_URL', true, env.BATTLEHUB_DEPLOYMENT === 'local');
