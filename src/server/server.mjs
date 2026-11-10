@@ -12,14 +12,16 @@ const mime = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; cha
   '.ico': 'image/x-icon', '.webp': 'image/webp', '.woff': 'font/woff', '.woff2': 'font/woff2',
   '.ttf': 'font/ttf', '.map': 'application/json; charset=utf-8' };
 
-function httpsUrl(value, key, originOnly = false) {
+function httpsUrl(value, key, originOnly = false, local = false) {
   let url;
   try { url = new URL(value); } catch { throw new Error(`${key} debe ser una URL HTTPS publica.`); }
-  if (url.protocol !== 'https:' || url.username || url.password || url.hash
+  const loopback = ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname);
+  const localUrl = local && loopback && ['http:', 'https:'].includes(url.protocol);
+  if ((!localUrl && url.protocol !== 'https:') || url.username || url.password || url.hash
     || (originOnly && (url.pathname !== '/' || url.search))) {
     throw new Error(`${key} debe ser una URL HTTPS sin credenciales${originOnly ? ' ni rutas' : ''}.`);
   }
-  if (['localhost', '127.0.0.1', '[::1]'].includes(url.hostname) || url.hostname.endsWith('.railway.internal')) {
+  if ((!local && loopback) || url.hostname.endsWith('.railway.internal')) {
     throw new Error(`${key} debe ser accesible desde el navegador del jugador.`);
   }
   return url;
@@ -35,8 +37,8 @@ export function readPublicConfiguration(env) {
   if (config.BATTLEHUB_AUTH_MODE === 'auth0') {
     for (const key of publicKeys) if (!config[key]) throw new Error(`Falta configurar ${key}.`);
     if (!/^[a-z0-9]+(?:[.-][a-z0-9-]+)+$/i.test(config.AUTH0_DOMAIN)) throw new Error('AUTH0_DOMAIN debe ser un hostname.');
-    httpsUrl(config.PROFILE_SERVICE_URL, 'PROFILE_SERVICE_URL', true);
-    httpsUrl(config.MATCHMAKING_SERVICE_URL, 'MATCHMAKING_SERVICE_URL', true);
+    httpsUrl(config.PROFILE_SERVICE_URL, 'PROFILE_SERVICE_URL', true, env.BATTLEHUB_DEPLOYMENT === 'local');
+    httpsUrl(config.MATCHMAKING_SERVICE_URL, 'MATCHMAKING_SERVICE_URL', true, env.BATTLEHUB_DEPLOYMENT === 'local');
   }
   if (env.PROFILE_ACCESS_PATH?.trim()) {
     const path = env.PROFILE_ACCESS_PATH.trim();
@@ -58,7 +60,7 @@ export function readRemotes(env) {
       || typeof entry.url !== 'string' || typeof entry.module !== 'string' || !entry.module.startsWith('./')) {
       throw new Error('Remote incompatible: usar juego, scope, url y module validos.');
     }
-    httpsUrl(entry.url, `Remote ${game}`);
+    httpsUrl(entry.url, `Remote ${game}`, false, env.BATTLEHUB_DEPLOYMENT === 'local');
     if (entries.some(([, previous]) => previous.scope === entry.scope)) throw new Error('Los remotes deben tener scopes distintos.');
     entries.push([game, { scope: entry.scope, url: entry.url, module: entry.module }]);
   }

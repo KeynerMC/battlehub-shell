@@ -93,3 +93,16 @@ test('publica la ruta unificada solo si es local al Profile Service', () => {
   assert.equal(readPublicConfiguration({ ...real, PROFILE_ACCESS_PATH: '/api/profiles/me/access' }).PROFILE_ACCESS_PATH, '/api/profiles/me/access');
   assert.throws(() => readPublicConfiguration({ ...real, PROFILE_ACCESS_PATH: 'https://other.example.com/api/profiles/me' }), /PROFILE_ACCESS_PATH/);
 });
+
+
+test('Compose local admite loopback sin relajar produccion ni HTTP externo', () => {
+  const local = { ...real, BATTLEHUB_DEPLOYMENT: 'local',
+    PROFILE_SERVICE_URL: 'http://localhost:5220',
+    MATCHMAKING_SERVICE_URL: 'http://127.0.0.1:5211' };
+  assert.equal(readPublicConfiguration(local).PROFILE_SERVICE_URL, local.PROFILE_SERVICE_URL);
+  assert.throws(() => readPublicConfiguration({ ...local, BATTLEHUB_DEPLOYMENT: 'production' }));
+  assert.throws(() => readPublicConfiguration({ ...local, PROFILE_SERVICE_URL: 'http://profile.example.com' }));
+  const remotes = { typing: { scope: 'typingGame', url: 'http://localhost:4001/remoteEntry.js', module: './GameModule' } };
+  assert.ok(readRemotes({ BATTLEHUB_DEPLOYMENT: 'local', REMOTES_CONFIG_JSON: JSON.stringify(remotes) }).typing);
+  assert.throws(() => readRemotes({ REMOTES_CONFIG_JSON: JSON.stringify(remotes) }));
+});
