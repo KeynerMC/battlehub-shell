@@ -1,111 +1,121 @@
-﻿# Memory: preparación local del Shell e instrucciones para Equipo 6
+# Integración de Memory con Shell, Auth0 y Matchmaking
 
-Revisión del 2026-10-04. Repositorio `paulapgarciazzz/battlehub-game-memory`, rama por defecto `main`, commit `c2ac89123d5d743456024f2058420c717d0172da`. Clonado por separado en `../battlehub-memory-integration`. La rama `fix/backend-arreglos` no tiene commits adicionales respecto de main. No se modificó ni publicó el código del Equipo 6.
 
-## Nuestra parte: Shell
+> **Documento historico conservado el 10 de noviembre de 2026.** Describe una revision anterior, no el contrato vigente ni evidencia de pruebas actuales. Para integrar usar el README y los tipos de `src/games`: los juegos reciben contexto y eventos sin proveedores de tokens; Shell notifica el fin a Matchmaking. Las referencias antiguas a Node 24, tokens por juego, permisos en Matchmaking o callbacks M2M de los juegos quedan superadas por el contrato de Etapa 2.
 
-- Remote `memoryGame`, URL `http://localhost:4003/remoteEntry.js`, exportación `./GameModule`. Confirmados en el Webpack de su repo.
-- Configuración `AUTH0_MEMORY_AUDIENCE`; valor preparado en `.env.development`: `https://api.battlehub.local/memory`. `.env.example` mantiene el campo vacío para configurar el entorno propio.
-- Tokens de jugadores Memory separados de Typing, Trivia y Profile/Matchmaking.
-- Botón **Autorizar Memory** cuando haga falta consentimiento. Popup solo por acción del usuario y con la misma identidad de la sesión.
-- Contexto con `getAccessToken()` para API/hub Memory y `getMatchmakingAccessToken()` para consultar la sala en Matchmaking desde el backend Memory. Las funciones se rechazan al cerrar el juego o cambiar sesión; no se almacenan JWT como campos del contexto.
-- Creación de salas Memory con dos plazas y validación de exactamente dos participantes al abrir y al revalidar la sala. Es una restricción de compatibilidad con el servicio actual del Equipo 6, que crea la sesión cuando llegan los dos primeros jugadores. El backend del juego también debe validarla.
-- Se conserva el resultado al cambiar Matchmaking a Finished, como en los otros juegos. No se agregó URL de producción sin un despliegue real.
+Base: paulapgarciazzz/battlehub-game-memory, main, c2ac891. Actualizada desde GitHub el 2026-10-04; no había commits posteriores en main. Estos ajustes son locales para revisión del Equipo 6, sin commits ni push.
 
-Los proveedores de tokens son extensiones locales **propuestas** del contrato GameContext. No se presentan como decisión aprobada del profesor. ADR-007 sigue Propuesto y contempla Profile/Matchmaking, no la audiencia de jugadores de Memory.
+## Resultado de la implementación
 
-## Lo que encontramos en Memory
+- API y hub validan JWT RS256 de jugadores con audiencia Memory, issuer y vigencia. El backend obtiene la identidad de sub y rechaza clientes M2M como jugadores.
+- JoinMatch(matchId, matchmakingAccessToken) consulta el detalle de la sala en Matchmaking con el token delegado. Comprueba el juego memory, estado Started, exactamente dos participantes distintos y membresía del sub autenticado. Los nombres salen del roster de Matchmaking.
+- FlipCard(matchId, cardId) ya no recibe userId del navegador. Requiere haber entrado a esa sala en la conexión actual y bloquea jugadas durante la previsualización.
+- Se conservan ocho parejas, cinco segundos de previsualización, turnos de diez segundos, punto por pareja y turno extra al acertar.
+- La reconexión vuelve a validar la sala y recupera cartas visibles, parejas, marcador, turno y fecha UTC de vencimiento desde StateSnapshot. Puede restaurar una sesión terminada existente si Matchmaking ya está Finished. Nunca crea una partida nueva desde una sala Finished.
+- Resultado y FinishNotifications se guardan en un mismo SaveChanges/transaction de EF. El cliente confirma el guardado, no fabrica resultados. POST results queda como reintento del guardado autoritativo para participantes de una sesión ya terminada.
+- La cola persistente avisa a POST /api/matches/{id}/finish con client_credentials y matches.finish. Cachea el token M2M. Cada despacho reintenta hasta tres veces fallos de red, 408, 429 y 5xx; otro despacho ocurre treinta segundos después. 401/403/404/409 y otros rechazos permanentes bloquean el aviso para revisión. Un 2xx confirma el cierre.
+- Si SQL falla al finalizar, un worker reintenta el guardado mientras la sesión siga en memoria. La pantalla no afirma que el resultado está guardado hasta confirmarlo.
+- Historial y estadísticas requieren el mismo sub de la ruta; resultados solo se leen por participantes. CORS permite Shell 4000 y remote 4003.
+- dispose elimina listeners y temporizadores, desconecta y elimina proveedores. Pause bloquea solo esta vista; el servidor y el rival continúan.
 
-Su repo ya incluye frontend Aurelia 2.0.0-rc.2, Module Federation compatible, tablero de 16 cartas, previsualización de cinco segundos, turnos de diez segundos, lógica del servidor, resultados idempotentes y persistencia SQL Server. Se deben conservar sus reglas y motor.
+## Configuración pública
 
-Todavía faltan en la versión revisada:
+Domain: dev-jaii1peslxnejq0y.us.auth0.com
+Issuer: https://dev-jaii1peslxnejq0y.us.auth0.com/
+Audience jugadores: https://api.battlehub.local/memory
+Audience callback M2M: https://api.battlehub.local/profile
+Client ID Memory Service: lfcBlgOCs9N0w6F6AWl4FqOs4xF9AQiN
+Game type: memory
+API: http://localhost:5095
+Hub: http://localhost:5095/hubs/memory
+Remote: http://localhost:4003/remoteEntry.js
+Module Federation: memoryGame, ./GameModule
 
-- JWT y políticas de autorización en API/hub.
-- Identidad desde `sub`; actualmente JoinMatch y FlipCard reciben el userId del navegador.
-- Validación de sala, estado y participantes contra Matchmaking.
-- Uso de los proveedores del Shell en SignalR y REST.
-- Reingreso al grupo y snapshot después de una reconexión; actualmente se configura reconnect pero no se recupera la partida.
-- Callback M2M a Matchmaking y recuperación persistente de avisos pendientes.
-- Confirmación explícita del guardado antes de presentar el resultado como guardado: hoy CardFlipped se emite antes de intentar guardar, y el frontend también vuelve a llamar POST results.
-- Liberación/reutilización correcta de suscripciones: el orquestador singleton se suscribe en su constructor, pero leaveMatch solo desconecta y limpia estado.
+El Client ID se copió del texto facilitado por el administrador. No se realizó una solicitud con ese cliente contra Auth0 real: confirmar que el ID coincida exactamente y que API Access > Profile > Client Access conceda solamente matches.finish. La API de jugadores debe usar RS256 y autorizar acceso delegado para BattleHub Shell.
 
-Registrar el remote en Shell no corrige estos puntos. El juego actual no utiliza las nuevas funciones del contexto: puede mostrar el tablero, pero no se considera integrada la autenticación ni la finalización entre equipos.
+El Client Secret no está en el código, la configuración pública ni el ZIP. Su responsable debe guardarlo localmente o en las variables privadas del servidor. El frontend no usa credenciales M2M.
 
-## Auth0: configuración que necesitamos
+## Configurar credenciales y arrancar sin Docker
 
-Tenant: `dev-jaii1peslxnejq0y.us.auth0.com`.
+Requisitos: .NET 10, Node >=24.11 <25 y SQL Server LocalDB o SQL Server. Este juego usa SQL Server, no MySQL.
+Desde la raíz del repo:
 
-| Recurso | Configuración |
-| --- | --- |
-| API de jugadores | Name: `BattleHub Memory API` |
-| Identifier / audiencia | `https://api.battlehub.local/memory` |
-| Algoritmo | `RS256` |
-| Acceso delegado | Autorizar la SPA `BattleHub Shell` |
-| Aplicación de backend | `BattleHub Memory Service`, tipo Machine to Machine |
-| API autorizada del M2M | BattleHub Profile Service, Identifier `https://api.battlehub.local/profile` |
-| Permiso del M2M | Solamente `matches.finish` |
-
-La aplicación M2M es diferente de la API de jugadores y de la aplicación de prueba que Auth0 pueda crear. Su Client ID se comparte con Equipo 2; su Client Secret solo se configura de forma privada en el backend Memory. No se guarda en el Shell, frontend, ZIP, Git ni documentos.
-
-No se confirmó todavía que estos recursos de Memory existan en el tenant. Establecer la variable del Shell no los crea. No hace falta asignar `matches.finish` a usuarios ni a la SPA Shell.
-
-## Archivos del Equipo 6 y cambios necesarios
-
-Las rutas siguientes son relativas a la raíz de su repo.
-
-| Archivo | Cambio |
-| --- | --- |
-| `src/BattleHub.Memory.Api/BattleHub.Memory.Api.csproj` | Añadir JWT Bearer compatible con .NET 10. |
-| `src/BattleHub.Memory.Api/Program.cs` | Registrar JWT, políticas, autenticación/autorización y protección de hub/controladores. Mantener CORS 4000/4003; coordinar HTTP local sin redirecciones incompatibles y HTTPS en despliegue. |
-| `src/BattleHub.Memory.Api/appsettings.json` | Añadir Domain y audiencia Memory, URL de Matchmaking y audiencia de callback. Client Secret fuera del repo. Conservar SQL Server/MemoryDatabase. |
-| `src/BattleHub.Memory.Api/Hubs/MemoryHub.cs` | Autorizar, obtener jugador de sub, consultar sala Started/memory y dos participantes, vincular conexión a sala e impedir jugar fuera de ella. No confiar en userId/displayName enviados por navegador. Recuperar snapshot tras reingreso. |
-| `src/BattleHub.Memory.Api/Services/MemoryGameService.cs` | Conservar motor, usar el roster validado de Matchmaking, impedir terceros y mantener el estado al reconectar. |
-| `src/BattleHub.Memory.Api/Services/TurnTimerService.cs` | Conservar diez segundos y número de turno; devolver vencimiento UTC para recuperación y cancelar recursos cuando corresponda. |
-| `src/BattleHub.Memory.Api/Services/MatchResultRecorder.cs` | Guardar primero, registrar aviso pendiente duradero y emitir confirmación de resultado después del guardado. |
-| `src/BattleHub.Memory.Data/Services/GameResultService.cs` | Conservar idempotencia y guardar resultado + aviso en una transacción; reforzar unicidad en base si falta. |
-| `src/BattleHub.Memory.Data/DbContext/MemoryDbContext.cs` | Registrar entidad de cola de avisos si se adopta la misma estrategia de Trivia. |
-| `src/BattleHub.Memory.Data/Migrations/` | Nueva migración aditiva para la cola y ajustes acordados; no reescribir migraciones existentes. |
-| `src/BattleHub.Memory.Api/Controllers/MemoryController.cs` | Proteger historial/estadísticas y permitir solo el sub propietario. |
-| `src/BattleHub.Memory.Api/Controllers/MemoryGameResultsController.cs` | Proteger resultado por participantes. El navegador no debe determinar ni forzar el guardado; eliminar la dependencia del POST de reintento o acordar un endpoint restringido que solo reintente una sesión terminada válida. |
-| `src/memory-microfrontend/memory-game/src/game-contracts.ts` | Añadir proveedores opcionales getAccessToken/getMatchmakingAccessToken como extensión local acordada. |
-| `src/memory-microfrontend/memory-game/src/game-module.ts` | Validar gameType memory y proveedores, configurarlos en initialize, conectar en start y limpiar en dispose. |
-| `src/memory-microfrontend/memory-game/src/services/memory-hub.service.ts` | Usar accessTokenFactory; eliminar userId/displayName como identidad autorizada; reingresar tras reconnect y obtener snapshot. |
-| `src/memory-microfrontend/memory-game/src/services/memory-http.service.ts` | Authorization Bearer de Memory en REST; retirar guardado desde frontend del flujo normal. |
-| `src/memory-microfrontend/memory-game/src/services/memory-game-orchestrator.ts` | Pasar proveedores a servicios, recuperar fases/tablero/turno, gestionar suscripciones sin duplicarlas y esperar confirmación de persistencia. |
-| `src/memory-microfrontend/memory-game/src/models/memory-hub.messages.ts` | Tipar snapshot, vencimientos UTC y confirmación de guardado, sin filtrar información que no corresponda a la fase. |
-| `src/memory-microfrontend/memory-game/config/environment.json` | Conservar API/hub local 5095; valores de producción reales en environment.production.json cuando desplieguen. |
-| `tests/BattleHub.Memory.UnitTests/` y `src/memory-microfrontend/memory-game/test/` | Mantener pruebas del motor y ampliar identidad, turnos, contexto, reconexión y lifecycle. Añadir pruebas de integración reales de API/hub/persistencia. |
-
-Agregar servicios separados para la consulta de Matchmaking y el cliente M2M/cola; no mezclar las credenciales M2M con el hub de jugadores.
-
-Propuesta de llamadas del hub a coordinar con el equipo, no contrato central aprobado:
-
-```typescript
-JoinMatch(matchId, matchmakingAccessToken)
-FlipCard(matchId, cardId)
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Set-MatchmakingCredentials.ps1
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Start-Integration.ps1
 ```
 
-El token de Memory autentica la conexión; el segundo token se usa solo para GET del detalle de Matchmaking. El backend identifica al jugador por sub y obtiene su nombre del participante del roster. No recibe userId del navegador como fuente de autorización.
+El primer script solicita el secreto de forma oculta y guarda las credenciales en dotnet user-secrets. El segundo aplica migraciones, incluidas las nuevas de FinishNotifications, y arranca en el puerto 5095. No borra bases ni resultados. La conexión por defecto es LocalDB/BattleHubMemoryDb. Si usan otro SQL Server:
 
-## Equipo 2 y Equipo 1
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Start-Integration.ps1 -ConnectionString 'Server=localhost;Database=BattleHubMemoryDb;Integrated Security=true;TrustServerCertificate=true'
+```
 
-Equipo 2: mantener GET `/api/matches/{id}` con participantes y POST `/api/matches/{id}/finish` idempotente. Agregar `CLIENT_ID_MEMORY_SERVICE: memory` en `GameServices:Clients`, conservando los demás juegos. No hay ID real de Memory disponible todavía. En el backend del juego validar dos participantes; coordinar también impedir capacidad mayor de dos para Memory en Matchmaking, porque otros clientes podrían crear salas sin pasar por este Shell.
+En otra terminal desde la raíz:
 
-Equipo 1: los seeds de nuestra copia ya incluyen memory habilitado, games.memory.play y permisos iniciales. Comprobar la base y versión reales: ambos jugadores con games.memory.play y anfitrión con matches.create. No se asume que los cambios locales estén publicados.
+```powershell
+cd src\memory-microfrontend\memory-game
+npm.cmd ci
+npm.cmd start
+```
 
-## Orden de trabajo y prueba
+El arnés de 4003 conserva su vista de desarrollo, pero ya no permite autenticar jugadores escribiendo un userId. Para jugar, abrir una sala real desde Shell 4000. config/environment.json debe apuntar a 5095. Para despliegue configurar environment.production.json con URLs reales; la API y el frontend verifican esa configuración. Usar HTTPS y ajustar CORS y los remotes del Shell al desplegar.
 
-1. Completar JWT y proveedores del frontend; validar sala y pertenencia en backend.
-2. Conservar mecánica existente y añadir recuperación tras reconexión.
-3. Completar guardado confirmado y callback M2M duradero.
-4. Configurar SQL y aplicar migraciones aditivas; no usar MySQL para esta copia.
-5. Levantar Profile, Matchmaking, Memory API 5095, remote 4003 y Shell 4000.
-6. Crear sala memory con dos cuentas, unirse, iniciar y autorizar Memory con la misma cuenta de Shell si se solicita.
-7. Completar ocho parejas; comprobar turnos, timeout, empate, historial, resultado persistido y sala Finished.
-8. Probar reconexión, usuario ajeno, suplantación de jugador, token de otra audiencia y llamadas anónimas.
+## Contexto del Shell
 
-Verificación de nuestra parte: lint, 58 pruebas del Shell y build de producción. Se verificaron audiencias separadas, consentimiento, contexto y revocación de proveedores, dos plazas y revalidación de participantes. El build conserva el aviso previo de tamaño del bundle. No se probó una partida Memory autenticada real: su backend/frontend todavía tienen los pendientes descritos.
+GameContext conserva matchId, gameType y currentUser. Además requiere las dos funciones opcionales del acuerdo local:
+- getAccessToken(): token de jugador para audiencia Memory.
+- getMatchmakingAccessToken(): token de usuario para audiencia Profile/Matchmaking, que el backend reenvía únicamente a su BaseUrl configurada.
 
-## Archivos cambiados en Shell para Memory
+El Shell local ya registra Memory en 4003 y proporciona ambas funciones. currentUser.id coincide con sub, pero no sustituye la validación del JWT en el backend. Las funciones de tokens y el roster extendido siguen siendo acuerdos de integración que deben coordinarse con el profesor. ADR-007 no está aprobado por esta entrega.
 
-`config/remotes.local.json`, `.env.example`, `.env.development` (ignorado), `src/infrastructure/configuration.ts`, `src/auth/auth0-auth-service.ts`, `src/pages/matches/matches-page.ts`, `src/pages/matches/matches-page.html`, pruebas de auth/configuración/salas, README y documentación de integración. Se preservaron los cambios anteriores de Typing/Trivia. La configuración privada de `.env.development` queda fuera del repositorio.
+## Equipo 2 — Matchmaking
+
+Agregar en GameServices:Clients de su appsettings.json, conservando Typing, Trivia y cualquier otro cliente:
+
+```json
+"lfcBlgOCs9N0w6F6AWl4FqOs4xF9AQiN": "memory"
+```
+
+O establecer en la terminal que arranca Matchmaking:
+
+```powershell
+$env:GameServices__Clients__lfcBlgOCs9N0w6F6AWl4FqOs4xF9AQiN='memory'
+```
+
+Reiniciar Matchmaking. Nunca necesita el secreto de Memory.
+GET /api/matches/{id} debe devolver id, gameType, status y participants [{userId, displayName}], y aceptar token de usuario de audiencia Profile. POST /api/matches/{id}/finish debe exigir M2M y matches.finish, comprobar que ese cliente corresponde a memory y ser idempotente (204 para cierre confirmado).
+El Shell crea Memory con dos plazas y el backend del juego exige dos participantes. Es recomendable que Matchmaking también limite memory a dos plazas al crear/iniciar la sala. Este ZIP no modifica el repo del Equipo 2.
+
+## Equipo 1 — Profile
+
+Confirmar memory habilitado, games.memory.play para ambos jugadores y matches.create para el anfitrión en los datos reales de Profile. No son credenciales M2M ni roles que esta entrega cree en Auth0. Compartir tenant y audiencia con Matchmaking según su configuración local; ADR-007 sigue siendo propuesta.
+
+## Prueba conjunta pendiente
+
+1. Levantar Profile, Matchmaking con su MongoDB, backend/remote Memory y Shell.
+2. Iniciar sesión con dos cuentas, en perfiles o navegadores separados.
+3. Crear sala memory de dos plazas, entrar ambos e iniciar.
+4. Abrir Memory desde Salas. Autorizar audiencia Memory con la misma cuenta si lo pide el Shell.
+5. Comprobar previsualización, turno, primera/segunda carta, error, pareja, vencimiento y empate/ganador.
+6. Reconectar durante la partida y comprobar que no se repita la previsualización ni se pierda el marcador.
+7. Completar las ocho parejas: resultado e historial guardados, Matchmaking Finished y FinishNotifications.Delivered=1.
+8. Intentos anónimos, usuario ajeno y audiencia incorrecta deben rechazarse.
+
+Si una notificación queda Blocked, revisar permisos, Client ID, mapa del Equipo 2 y respuesta de finish antes de reactivarla. En la base de Memory:
+
+```sql
+SELECT MatchId, Delivered, Blocked, Attempts, NextAttemptAt FROM FinishNotifications;
+UPDATE FinishNotifications SET Blocked=0, NextAttemptAt=SYSDATETIMEOFFSET()
+WHERE MatchId='PARTIDA_REVISADA' AND Delivered=0;
+```
+
+Nunca reactivar todas las filas sin comprobar la causa.
+
+## Pruebas y límites
+
+Se ejecutaron las pruebas originales del dominio, las del frontend y las nuevas de API/SignalR/SQL/HTTP de Matchmaking. La prueba completa usa dos clientes SignalR reales, JWT RS256 con clave temporal y una base aislada de SQL LocalDB; el gateway de Matchmaking se sustituye por uno controlado. Sus solicitudes HTTP/M2M/reintentos se prueban por separado. No demuestra una partida con Auth0 y Matchmaking reales.
+
+Las sesiones activas siguen en memoria: un reinicio pierde partidas activas y resultados que aún no pudieron guardarse. Los resultados confirmados y avisos SQL pendientes sobreviven. Usar una sola instancia de Memory; compartir estado y escalar requiere trabajo adicional. La integración local no equivale a despliegue para el profesor.
+
+npm ci reportó 42 hallazgos en las dependencias existentes (3 moderados, 39 altos). No se aplicaron actualizaciones masivas que alteren Aurelia o las versiones compartidas.
