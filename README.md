@@ -357,3 +357,27 @@ El remote debe adaptar su elemento raiz al espacio disponible.
 Las pruebas de navegador verifican el demo de Module Federation. La ausencia de scroll
 con Memory, Trivia y Typing reales y el recorrido completo con sus backends necesitan
 pruebas conjuntas; no se consideran demostrados por el demo ni por el catalogo.
+
+
+### Compose con servicios locales
+
+Para probar desde el navegador de la misma computadora, configurar en `.env`
+`BATTLEHUB_DEPLOYMENT=local`, `BATTLEHUB_AUTH_MODE=auth0`, los valores publicos
+reales de Auth0 y las URLs de Profile y Matchmaking en localhost. Configurar
+`REMOTES_CONFIG_JSON` con los remotes locales y sus scopes/modulos acordados.
+El modo local permite HTTP exclusivamente para localhost, 127.0.0.1 y ::1;
+no permite HTTP hacia servidores externos. No agregar secretos M2M.
+Las APIs y los juegos deben estar encendidos por separado. Estas direcciones
+las usa el navegador: localhost no apunta al contenedor.
+
+Ejecutar `docker compose up --build -d`, comprobar `docker compose ps` y detener
+con `docker compose down`. Produccion usa `BATTLEHUB_DEPLOYMENT=production`
+(valor predeterminado), exige URLs publicas HTTPS y mantiene Auth0 obligatorio.
+
+Comprobaciones HTTP del servidor Shell:
+
+```sh
+curl -i http://localhost:4000/health
+curl -i http://localhost:4000/shell-config.js
+curl -i http://localhost:4000/remotes.config.json
+```

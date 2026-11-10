@@ -1,6 +1,8 @@
-﻿# Auth0 y Profile Service
+# Auth0 y Profile Service
 
 ## Configuración
+
+El flujo compartido con Matchmaking y las reglas de HTTPS del issue 13 se describen en [issue13-audiencia-compartida.md](issue13-audiencia-compartida.md).
 
 Copiar `.env.example` a `.env.development` si el archivo local todavía no existe:
 

@@ -60,3 +60,14 @@ describe('Configuración del Shell', () => {
   });
 
 });
+
+
+test('permite HTTP loopback en Compose local y rechaza HTTP externo', () => {
+  const local = { NODE_ENV: 'production', BATTLEHUB_DEPLOYMENT: 'local',
+    BATTLEHUB_AUTH_MODE: 'auth0', AUTH0_DOMAIN: 'tenant.us.auth0.com',
+    AUTH0_CLIENT_ID: 'public-id', AUTH0_AUDIENCE: 'https://api.example.com',
+    PROFILE_SERVICE_URL: 'http://localhost:5220', MATCHMAKING_SERVICE_URL: 'http://localhost:5211' };
+  expect(readConfiguration(local).mode).toBe('auth0');
+  expect(() => readConfiguration({ ...local, PROFILE_SERVICE_URL: 'http://external.example.com' })).toThrow('HTTPS');
+  expect(() => readConfiguration({ ...local, BATTLEHUB_DEPLOYMENT: 'production' })).toThrow('HTTPS');
+});

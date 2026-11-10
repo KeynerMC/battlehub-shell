@@ -2,7 +2,7 @@ declare global {
   interface Window { __BATTLEHUB_CONFIG__?: unknown }
 }
 
-const publicKeys = ['BATTLEHUB_AUTH_MODE', 'AUTH0_DOMAIN', 'AUTH0_CLIENT_ID', 'AUTH0_AUDIENCE',
+const publicKeys = ['BATTLEHUB_DEPLOYMENT', 'BATTLEHUB_AUTH_MODE', 'AUTH0_DOMAIN', 'AUTH0_CLIENT_ID', 'AUTH0_AUDIENCE',
   'PROFILE_SERVICE_URL', 'MATCHMAKING_SERVICE_URL', 'PROFILE_ACCESS_PATH'] as const;
 
 export interface ShellConfiguration {
@@ -32,7 +32,7 @@ export function readConfiguration(values: Record<string, string | undefined>): S
   const audience = required('AUTH0_AUDIENCE');
   const requireSecureTransport = (url: URL, key: string): void => {
     const loopback = ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname);
-    if (url.protocol !== 'https:' && !(values.NODE_ENV === 'development' && loopback && url.protocol === 'http:')) {
+    if (url.protocol !== 'https:' && !((values.NODE_ENV === 'development' || values.BATTLEHUB_DEPLOYMENT === 'local') && loopback && url.protocol === 'http:')) {
       throw new Error(`${key} requiere HTTPS; HTTP solo se permite en localhost durante desarrollo.`);
     }
   };
@@ -89,7 +89,9 @@ export function loadConfiguration(): ShellConfiguration {
     }
   }
   const config = readConfiguration(values);
-  if (config.mode === 'auth0' && process.env.NODE_ENV !== 'development' && window.location.protocol !== 'https:') {
+  const localBrowser = values.BATTLEHUB_DEPLOYMENT === 'local'
+    && ['localhost', '127.0.0.1', '[::1]'].includes(window.location.hostname);
+  if (config.mode === 'auth0' && process.env.NODE_ENV !== 'development' && !localBrowser && window.location.protocol !== 'https:') {
     throw new Error('El Shell con Auth0 requiere HTTPS fuera de desarrollo.');
   }
   return config;
